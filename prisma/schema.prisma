@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  telegramId String   @unique
+  username   String?
+  firstName  String?
+  createdAt  DateTime @default(now())
+
+  decks        Deck[]
+  subscription Subscription?
+}
+
+model Deck {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId     Int
+  user       User        @relation(fields: [userId], references: [id])
+  flashcards Flashcard[]
+}
+
+model Flashcard {
+  id        Int      @id @default(autoincrement())
+  frontText String // Original so'z (inglizcha)
+  backText  String // O'zbekcha tarjima
+  example   String? // Misol jumla
+  imageUrl  String? // Rasm (optional)
+  createdAt DateTime @default(now())
+
+  deckId Int
+  deck   Deck @relation(fields: [deckId], references: [id])
+}
+
+model Subscription {
+  id        Int       @id @default(autoincrement())
+  plan      Plan      @default(FREE)
+  expiresAt DateTime?
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+}
+
+enum Plan {
+  FREE
+  PRO
+  B2B
+}
