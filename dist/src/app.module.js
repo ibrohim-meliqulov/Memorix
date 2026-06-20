@@ -8,25 +8,32 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
-const auth_module_1 = require("./auth/auth.module");
-const flashcard_module_1 = require("./flashcard/flashcard.module");
-const ai_module_1 = require("./ai/ai.module");
-const upload_module_1 = require("./upload/upload.module");
-const user_module_1 = require("./user/user.module");
-const prisma_module_1 = require("./prisma/prisma.module");
 const config_1 = require("@nestjs/config");
+const prisma_module_1 = require("./prisma/prisma.module");
+const ai_module_1 = require("./ai/ai.module");
 const deck_module_1 = require("./deck/deck.module");
+const flashcard_module_1 = require("./flashcard/flashcard.module");
+const user_module_1 = require("./user/user.module");
+const auth_module_1 = require("./auth/auth.module");
+const upload_module_1 = require("./upload/upload.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [config_1.ConfigModule.forRoot({
+        imports: [
+            config_1.ConfigModule.forRoot({
                 isGlobal: true,
-                envFilePath: 'env',
-            }), auth_module_1.AuthModule, flashcard_module_1.FlashcardModule, ai_module_1.AiModule, upload_module_1.UploadModule, user_module_1.UserModule, prisma_module_1.PrismaModule, deck_module_1.DeckModule],
-        controllers: [],
-        providers: [],
+                envFilePath: '.env',
+            }),
+            prisma_module_1.PrismaModule,
+            ai_module_1.AiModule,
+            deck_module_1.DeckModule,
+            flashcard_module_1.FlashcardModule,
+            user_module_1.UserModule,
+            auth_module_1.AuthModule,
+            upload_module_1.UploadModule,
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map
