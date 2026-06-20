@@ -4,11 +4,11 @@ export declare class DeckController {
     private readonly deckService;
     constructor(deckService: DeckService);
     create(dto: CreateDeckDto): Promise<{
+        id: number;
+        createdAt: Date;
         title: string;
         description: string | null;
-        createdAt: Date;
         updatedAt: Date;
-        id: number;
         userId: number;
     }>;
     findAllByUser(userId: number): Promise<({
@@ -16,17 +16,17 @@ export declare class DeckController {
             flashcards: number;
         };
     } & {
+        id: number;
+        createdAt: Date;
         title: string;
         description: string | null;
-        createdAt: Date;
         updatedAt: Date;
-        id: number;
         userId: number;
     })[]>;
     findOne(id: number): Promise<{
         flashcards: {
-            createdAt: Date;
             id: number;
+            createdAt: Date;
             frontText: string;
             backText: string;
             example: string | null;
@@ -37,19 +37,19 @@ export declare class DeckController {
             flashcards: number;
         };
     } & {
+        id: number;
+        createdAt: Date;
         title: string;
         description: string | null;
-        createdAt: Date;
         updatedAt: Date;
-        id: number;
         userId: number;
     }>;
     update(id: number, userId: number, dto: UpdateDeckDto): Promise<{
+        id: number;
+        createdAt: Date;
         title: string;
         description: string | null;
-        createdAt: Date;
         updatedAt: Date;
-        id: number;
         userId: number;
     }>;
     remove(id: number, userId: number): Promise<{

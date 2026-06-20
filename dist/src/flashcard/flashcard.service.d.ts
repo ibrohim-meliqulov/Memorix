@@ -4,12 +4,12 @@ export declare class FlashcardService {
     private prisma;
     constructor(prisma: PrismaService);
     create(dto: CreateFlashcardDto): Promise<{
+        id: number;
+        createdAt: Date;
         frontText: string;
         backText: string;
         example: string | null;
         imageUrl: string | null;
-        createdAt: Date;
-        id: number;
         deckId: number;
     }>;
     bulkCreate(dto: BulkCreateFlashcardDto): Promise<{
@@ -18,30 +18,30 @@ export declare class FlashcardService {
         message: string;
     }>;
     findAllByDeck(deckId: number): Promise<{
+        id: number;
+        createdAt: Date;
         frontText: string;
         backText: string;
         example: string | null;
         imageUrl: string | null;
-        createdAt: Date;
-        id: number;
         deckId: number;
     }[]>;
     findOne(id: number): Promise<{
+        id: number;
+        createdAt: Date;
         frontText: string;
         backText: string;
         example: string | null;
         imageUrl: string | null;
-        createdAt: Date;
-        id: number;
         deckId: number;
     }>;
     update(id: number, dto: UpdateFlashcardDto): Promise<{
+        id: number;
+        createdAt: Date;
         frontText: string;
         backText: string;
         example: string | null;
         imageUrl: string | null;
-        createdAt: Date;
-        id: number;
         deckId: number;
     }>;
     remove(id: number): Promise<{

@@ -1,19 +1,26 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import { FlashcardModule } from './flashcard/flashcard.module';
-import { AiModule } from './ai/ai.module';
-import { UploadModule } from './upload/upload.module';
-import { UserModule } from './user/user.module';
-import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './prisma/prisma.module';
+import { AiModule } from './ai/ai.module';
 import { DeckModule } from './deck/deck.module';
+import { FlashcardModule } from './flashcard/flashcard.module';
+import { UserModule } from './user/user.module';
+import { AuthModule } from './auth/auth.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({
-    isGlobal: true,
-    envFilePath: 'env',
-  }), AuthModule, FlashcardModule, AiModule, UploadModule, UserModule, PrismaModule, DeckModule],
-  controllers: [],
-  providers: [],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    PrismaModule,
+    AiModule,
+    DeckModule,
+    FlashcardModule,
+    UserModule,
+    AuthModule,
+    UploadModule,
+  ],
 })
-export class AppModule { }
+export class AppModule {}
