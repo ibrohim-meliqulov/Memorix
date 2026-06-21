@@ -1,14 +1,41 @@
 import { UserService } from './user.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { UpdateUserDto } from './dto/user.dto';
+import type { CurrentUserData } from '../auth/current-user.decorator';
 export declare class UserController {
     private readonly userService;
     constructor(userService: UserService);
-    findOrCreate(dto: CreateUserDto): Promise<{
+    getMe(user: CurrentUserData): Promise<{
+        subscription: {
+            id: number;
+            plan: import(".prisma/client").$Enums.Plan;
+            expiresAt: Date | null;
+            userId: number;
+        } | null;
+    } & {
         id: number;
         telegramId: string;
         username: string | null;
         firstName: string | null;
         createdAt: Date;
+    }>;
+    getMyStats(user: CurrentUserData): Promise<{
+        userId: number;
+        firstName: string | null;
+        plan: import(".prisma/client").$Enums.Plan;
+        totalDecks: number;
+        totalFlashcards: number;
+        memberSince: Date;
+    }>;
+    updateMe(user: CurrentUserData, dto: UpdateUserDto): Promise<{
+        id: number;
+        telegramId: string;
+        username: string | null;
+        firstName: string | null;
+        createdAt: Date;
+    }>;
+    removeMe(user: CurrentUserData): Promise<{
+        success: boolean;
+        message: string;
     }>;
     findOne(id: number): Promise<{
         subscription: {
@@ -23,38 +50,5 @@ export declare class UserController {
         username: string | null;
         firstName: string | null;
         createdAt: Date;
-    }>;
-    findByTelegramId(telegramId: string): Promise<{
-        subscription: {
-            id: number;
-            plan: import(".prisma/client").$Enums.Plan;
-            expiresAt: Date | null;
-            userId: number;
-        } | null;
-    } & {
-        id: number;
-        telegramId: string;
-        username: string | null;
-        firstName: string | null;
-        createdAt: Date;
-    }>;
-    getStats(id: number): Promise<{
-        userId: number;
-        firstName: string | null;
-        plan: import(".prisma/client").$Enums.Plan;
-        totalDecks: number;
-        totalFlashcards: number;
-        memberSince: Date;
-    }>;
-    update(id: number, dto: UpdateUserDto): Promise<{
-        id: number;
-        telegramId: string;
-        username: string | null;
-        firstName: string | null;
-        createdAt: Date;
-    }>;
-    remove(id: number): Promise<{
-        success: boolean;
-        message: string;
     }>;
 }

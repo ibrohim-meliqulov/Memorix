@@ -1,56 +1,56 @@
 // src/user/user.controller.ts
 
 import {
-    Controller,
-    Get,
-    Post,
-    Patch,
-    Delete,
-    Body,
-    Param,
-    ParseIntPipe,
+  Controller,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { UpdateUserDto } from './dto/user.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { CurrentUserData } from '../auth/current-user.decorator';
 
 @Controller('users')
 export class UserController {
-    constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
-    // POST /users/telegram-auth
-    // Telegram Mini App ochilganda shu chaqiriladi
-    @Post('telegram-auth')
-    findOrCreate(@Body() dto: CreateUserDto) {
-        return this.userService.findOrCreate(dto);
-    }
+  // GET /users/me  — joriy foydalanuvchi profili (himoyalangan)
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@CurrentUser() user: CurrentUserData) {
+    return this.userService.findOne(user.userId);
+  }
 
-    // GET /users/:id
-    @Get(':id')
-    findOne(@Param('id', ParseIntPipe) id: number) {
-        return this.userService.findOne(id);
-    }
+  // GET /users/me/stats — joriy foydalanuvchi statistikasi
+  @UseGuards(JwtAuthGuard)
+  @Get('me/stats')
+  getMyStats(@CurrentUser() user: CurrentUserData) {
+    return this.userService.getStats(user.userId);
+  }
 
-    // GET /users/telegram/:telegramId
-    @Get('telegram/:telegramId')
-    findByTelegramId(@Param('telegramId') telegramId: string) {
-        return this.userService.findByTelegramId(telegramId);
-    }
+  // PATCH /users/me — profilni tahrirlash
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateMe(@CurrentUser() user: CurrentUserData, @Body() dto: UpdateUserDto) {
+    return this.userService.update(user.userId, dto);
+  }
 
-    // GET /users/:id/stats
-    @Get(':id/stats')
-    getStats(@Param('id', ParseIntPipe) id: number) {
-        return this.userService.getStats(id);
-    }
+  // DELETE /users/me — akkauntni o'chirish
+  @UseGuards(JwtAuthGuard)
+  @Delete('me')
+  removeMe(@CurrentUser() user: CurrentUserData) {
+    return this.userService.remove(user.userId);
+  }
 
-    // PATCH /users/:id
-    @Patch(':id')
-    update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
-        return this.userService.update(id, dto);
-    }
-
-    // DELETE /users/:id
-    @Delete(':id')
-    remove(@Param('id', ParseIntPipe) id: number) {
-        return this.userService.remove(id);
-    }
+  // ─── Quyidagilar ID orqali (masalan adminlik uchun) — hozircha ochiq ───
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.findOne(id);
+  }
 }
