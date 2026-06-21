@@ -16,6 +16,7 @@ exports.FlashcardController = void 0;
 const common_1 = require("@nestjs/common");
 const flashcard_service_1 = require("./flashcard.service");
 const flashcard_dto_1 = require("./dto/flashcard.dto");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let FlashcardController = class FlashcardController {
     flashcardService;
     constructor(flashcardService) {
@@ -86,6 +87,7 @@ __decorate([
 ], FlashcardController.prototype, "remove", null);
 exports.FlashcardController = FlashcardController = __decorate([
     (0, common_1.Controller)('flashcards'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [flashcard_service_1.FlashcardService])
 ], FlashcardController);
 //# sourceMappingURL=flashcard.controller.js.map

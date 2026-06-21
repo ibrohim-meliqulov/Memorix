@@ -8,26 +8,35 @@ import {
     Delete,
     Body,
     Param,
-    Query,
+    UseGuards,
     ParseIntPipe,
 } from '@nestjs/common';
 import { DeckService } from './deck.service';
-import { CreateDeckDto, UpdateDeckDto } from './dto/deck.dto';
+import { UpdateDeckDto } from './dto/deck.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { CurrentUserData } from '../auth/current-user.decorator';
+
+class CreateDeckBodyDto {
+    title: string;
+    description?: string;
+}
 
 @Controller('decks')
+@UseGuards(JwtAuthGuard) // Butun controller himoyalangan
 export class DeckController {
     constructor(private readonly deckService: DeckService) { }
 
-    // POST /decks
+    // POST /decks  (Authorization: Bearer <token> kerak)
     @Post()
-    create(@Body() dto: CreateDeckDto) {
-        return this.deckService.create(dto);
+    create(@CurrentUser() user: CurrentUserData, @Body() dto: CreateDeckBodyDto) {
+        return this.deckService.create({ ...dto, userId: user.userId });
     }
 
-    // GET /decks?userId=1
+    // GET /decks  (faqat o'zining decklarini ko'radi)
     @Get()
-    findAllByUser(@Query('userId', ParseIntPipe) userId: number) {
-        return this.deckService.findAllByUser(userId);
+    findAllByUser(@CurrentUser() user: CurrentUserData) {
+        return this.deckService.findAllByUser(user.userId);
     }
 
     // GET /decks/:id
@@ -36,22 +45,19 @@ export class DeckController {
         return this.deckService.findOne(id);
     }
 
-    // PATCH /decks/:id?userId=1
+    // PATCH /decks/:id
     @Patch(':id')
     update(
         @Param('id', ParseIntPipe) id: number,
-        @Query('userId', ParseIntPipe) userId: number,
+        @CurrentUser() user: CurrentUserData,
         @Body() dto: UpdateDeckDto,
     ) {
-        return this.deckService.update(id, userId, dto);
+        return this.deckService.update(id, user.userId, dto);
     }
 
-    // DELETE /decks/:id?userId=1
+    // DELETE /decks/:id
     @Delete(':id')
-    remove(
-        @Param('id', ParseIntPipe) id: number,
-        @Query('userId', ParseIntPipe) userId: number,
-    ) {
-        return this.deckService.remove(id, userId);
+    remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: CurrentUserData) {
+        return this.deckService.remove(id, user.userId);
     }
 }

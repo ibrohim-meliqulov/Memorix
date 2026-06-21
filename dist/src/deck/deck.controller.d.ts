@@ -1,9 +1,14 @@
 import { DeckService } from './deck.service';
-import { CreateDeckDto, UpdateDeckDto } from './dto/deck.dto';
+import { UpdateDeckDto } from './dto/deck.dto';
+import type { CurrentUserData } from '../auth/current-user.decorator';
+declare class CreateDeckBodyDto {
+    title: string;
+    description?: string;
+}
 export declare class DeckController {
     private readonly deckService;
     constructor(deckService: DeckService);
-    create(dto: CreateDeckDto): Promise<{
+    create(user: CurrentUserData, dto: CreateDeckBodyDto): Promise<{
         id: number;
         createdAt: Date;
         title: string;
@@ -11,7 +16,7 @@ export declare class DeckController {
         updatedAt: Date;
         userId: number;
     }>;
-    findAllByUser(userId: number): Promise<({
+    findAllByUser(user: CurrentUserData): Promise<({
         _count: {
             flashcards: number;
         };
@@ -44,7 +49,7 @@ export declare class DeckController {
         updatedAt: Date;
         userId: number;
     }>;
-    update(id: number, userId: number, dto: UpdateDeckDto): Promise<{
+    update(id: number, user: CurrentUserData, dto: UpdateDeckDto): Promise<{
         id: number;
         createdAt: Date;
         title: string;
@@ -52,8 +57,9 @@ export declare class DeckController {
         updatedAt: Date;
         userId: number;
     }>;
-    remove(id: number, userId: number): Promise<{
+    remove(id: number, user: CurrentUserData): Promise<{
         success: boolean;
         message: string;
     }>;
 }
+export {};
