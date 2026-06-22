@@ -16,9 +16,15 @@ import { UpdateDeckDto } from './dto/deck.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { CurrentUserData } from '../auth/current-user.decorator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 class CreateDeckBodyDto {
+    @IsString()
+    @IsNotEmpty()
     title: string;
+
+    @IsOptional()
+    @IsString()
     description?: string;
 }
 
