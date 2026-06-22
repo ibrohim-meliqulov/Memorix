@@ -9,6 +9,7 @@ export class BotService implements OnModuleInit {
 
   constructor(private configService: ConfigService) {
     const token = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
+    if (!token) throw new Error('TELEGRAM_BOT_TOKEN topilmadi');
     this.bot = new Telegraf(token);
   }
 
