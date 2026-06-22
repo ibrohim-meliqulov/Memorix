@@ -11,7 +11,7 @@ export class DeckService {
     async create(dto: CreateDeckDto) {
         return this.prisma.deck.create({
             data: {
-                title: dto.title,
+                title: dto.title || "Yangi to'plam",
                 description: dto.description,
                 userId: dto.userId,
             },
