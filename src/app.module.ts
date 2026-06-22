@@ -6,7 +6,7 @@ import { DeckModule } from './deck/deck.module';
 import { FlashcardModule } from './flashcard/flashcard.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { UploadModule } from './upload/upload.module';
+import { BotModule } from './bot/bot.module';
 
 @Module({
   imports: [
@@ -20,7 +20,7 @@ import { UploadModule } from './upload/upload.module';
     FlashcardModule,
     UserModule,
     AuthModule,
-    UploadModule,
+    BotModule,
   ],
 })
 export class AppModule {}
