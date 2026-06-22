@@ -4,6 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -12,6 +14,7 @@ model User {
   username   String?
   firstName  String?
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   decks        Deck[]
   subscription Subscription?
@@ -25,20 +28,20 @@ model Deck {
   updatedAt   DateTime @updatedAt
 
   userId     Int
-  user       User        @relation(fields: [userId], references: [id])
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   flashcards Flashcard[]
 }
 
 model Flashcard {
   id        Int      @id @default(autoincrement())
-  frontText String // Original so'z (inglizcha)
-  backText  String // O'zbekcha tarjima
-  example   String? // Misol jumla
-  imageUrl  String? // Rasm (optional)
+  frontText String
+  backText  String
+  example   String?
+  imageUrl  String?
   createdAt DateTime @default(now())
 
   deckId Int
-  deck   Deck @relation(fields: [deckId], references: [id])
+  deck   Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
 }
 
 model Subscription {
@@ -47,7 +50,7 @@ model Subscription {
   expiresAt DateTime?
 
   userId Int  @unique
-  user   User @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Plan {
