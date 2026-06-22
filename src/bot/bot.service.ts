@@ -50,7 +50,8 @@ export class BotService implements OnModuleInit {
         { parse_mode: 'Markdown' }
       );
     });
-
+    this.bot.launch();
+    this.logger.log('✅ Bot polling ishga tushdi');
     this.logger.log('✅ Bot service initialized');
   }
 
