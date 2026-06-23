@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -16,8 +16,9 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  decks        Deck[]
-  subscription Subscription?
+  decks         Deck[]
+  subscription  Subscription?
+  studySessions StudySession[]
 }
 
 model Deck {
@@ -51,6 +52,15 @@ model Subscription {
 
   userId Int  @unique
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudySession {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  cardsStudied Int      @default(0)
+  studiedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Plan {

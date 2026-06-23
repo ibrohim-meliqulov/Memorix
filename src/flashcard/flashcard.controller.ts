@@ -19,15 +19,28 @@ import {
     BulkCreateFlashcardDto,
 } from './dto/flashcard.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { CurrentUserData } from '../auth/current-user.decorator';
+
 
 @Controller('flashcards')
 @UseGuards(JwtAuthGuard)
 export class FlashcardController {
     constructor(private readonly flashcardService: FlashcardService) { }
 
+
     @Post()
     create(@Body() dto: CreateFlashcardDto) {
         return this.flashcardService.create(dto);
+    }
+
+
+    @Post('session')
+    async saveSession(
+        @CurrentUser() user: CurrentUserData,
+        @Body() body: { cardsStudied: number }
+    ) {
+        return this.flashcardService.saveSession(user.userId, body.cardsStudied);
     }
 
     // POST /flashcards/bulk  ← AI natijasini saqlash uchun

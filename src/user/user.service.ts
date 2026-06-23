@@ -88,14 +88,58 @@ export class UserService {
             where: { deck: { userId: id } },
         });
 
+        // Jami o'rganilgan so'zlar
+        const sessions = await this.prisma.studySession.findMany({
+            where: { userId: id },
+            orderBy: { studiedAt: 'desc' },
+        });
+
+        const totalStudied = sessions.reduce((sum, s) => sum + s.cardsStudied, 0);
+
+        // Streak hisoblash
+        const streak = this.calcStreak(sessions.map(s => s.studiedAt));
+
+        // Haftalik faollik (oxirgi 7 kun)
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 6);
+
+        const weekly = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(weekAgo);
+            d.setDate(weekAgo.getDate() + i);
+            const dateStr = d.toISOString().split('T')[0];
+            const count = sessions
+                .filter(s => s.studiedAt.toISOString().split('T')[0] === dateStr)
+                .reduce((sum, s) => sum + s.cardsStudied, 0);
+            return { date: dateStr, count };
+        });
+
         return {
             userId: id,
             firstName: user.firstName,
             plan: user.subscription?.plan ?? 'FREE',
             totalDecks: deckCount,
             totalFlashcards: flashcardCount,
+            totalStudied,
+            streak,
+            weekly,
             memberSince: user.createdAt,
         };
+    }
+
+    private calcStreak(dates: Date[]): number {
+        if (dates.length === 0) return 0;
+        const unique = [...new Set(dates.map(d => d.toISOString().split('T')[0]))].sort().reverse();
+        let streak = 0;
+        const today = new Date().toISOString().split('T')[0];
+        for (let i = 0; i < unique.length; i++) {
+            const expected = new Date();
+            expected.setDate(expected.getDate() - i);
+            if (unique[i] === expected.toISOString().split('T')[0]) {
+                streak++;
+            } else break;
+        }
+        return streak;
     }
 
     async remove(id: number) {

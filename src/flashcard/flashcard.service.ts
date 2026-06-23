@@ -113,4 +113,10 @@ export class FlashcardService {
         }
         return deck;
     }
+
+    async saveSession(userId: number, cardsStudied: number) {
+        return this.prisma.studySession.create({
+            data: { userId, cardsStudied }
+        });
+    }
 }
