@@ -51,10 +51,21 @@ export class BotService implements OnModuleInit {
 
     // Webhook o'rnatamiz (polling emas!)
     const webhookUrl = `https://memorix-r9gk.onrender.com/webhook`;
-    await this.bot.telegram.setWebhook(webhookUrl);
-    this.logger.log(`✅ Webhook set: ${webhookUrl}`);
+    try {
+      await this.bot.telegram.setWebhook(webhookUrl);
+      this.logger.log(`✅ Webhook set: ${webhookUrl}`);
+    } catch (err: any) {
+      if (err?.response?.error_code === 429) {
+        const retryAfter = (err?.response?.parameters?.retry_after ?? 3) + 1;
+        this.logger.warn(`⏳ Rate limit, ${retryAfter}s kutilmoqda...`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        await this.bot.telegram.setWebhook(webhookUrl);
+        this.logger.log(`✅ Webhook set (retry): ${webhookUrl}`);
+      } else {
+        this.logger.error('Webhook xatosi: ' + err.message);
+      }
+    }
   }
-
   getBot() {
     return this.bot;
   }
