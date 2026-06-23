@@ -14,11 +14,13 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // Webhook endpoint
-  const botService = app.get(BotService);
-  app.use('/webhook', botService.getBot().webhookCallback('/webhook'));
-
   const port = process.env.PORT || 10000;
+  
+  // Bot webhook
+  const botService = app.get(BotService);
+  const bot = botService.getBot();
+  app.use(bot.webhookCallback('/webhook'));
+
   await app.listen(port, '0.0.0.0');
   console.log(`Server running on port ${port}`);
 }
