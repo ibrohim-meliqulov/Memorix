@@ -14,7 +14,7 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private readonly modelName = 'gemini-2.0-flash';
+    private readonly modelName = 'gemini-1.5-flash-latest';
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -43,10 +43,15 @@ export class AiService {
             const responseText = result.response.text();
 
             return this.parseFlashcardResponse(responseText);
-        } catch (error) {
-            this.logger.error('Gemini API xatosi (text):', error);
+        } catch (error: any) {
+            this.logger.error('Gemini API xatosi (text):', error.message);
+            if (error.status === 429 || error.message?.includes('429')) {
+                throw new BadRequestException(
+                    'AI hozir band. Biroz kutib qayta urinib ko\'ring.',
+                );
+            }
             throw new BadRequestException(
-                'AI orqali so\'z ajratishda xatolik yuz berdi. Qayta urinib ko\'ring.',
+                'AI orqali so\'z ajratishda xatolik yuz berdi.',
             );
         }
     }
