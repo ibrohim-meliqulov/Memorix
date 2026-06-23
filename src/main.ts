@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { BotService } from './bot/bot.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,12 +14,12 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  app.getHttpAdapter().get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-  });
+  // Webhook endpoint
+  const botService = app.get(BotService);
+  app.use('/webhook', botService.getBot().webhookCallback('/webhook'));
 
-  const port = process.env.PORT || 3000;
-  await app.listen(port, '0.0.0.0'); // '0.0.0.0' muhim!
+  const port = process.env.PORT || 10000;
+  await app.listen(port, '0.0.0.0');
   console.log(`Server running on port ${port}`);
 }
 bootstrap();

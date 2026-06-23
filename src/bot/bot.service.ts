@@ -16,7 +16,6 @@ export class BotService implements OnModuleInit {
   async onModuleInit() {
     this.bot.start(async (ctx) => {
       const firstName = ctx.from?.first_name || "Do'st";
-
       await ctx.reply(
         `👋 Salom, ${firstName}!\n\n` +
         `🧠 *Memorix* — AI yordamida inglizcha so'zlarni o'rganish!\n\n` +
@@ -45,16 +44,15 @@ export class BotService implements OnModuleInit {
         `1️⃣ "Yaratish" bo'limiga o'ting\n` +
         `2️⃣ Inglizcha matn yozing yoki rasm yuklang\n` +
         `3️⃣ AI so'zlarni avtomatik ajratadi\n` +
-        `4️⃣ Flashcard saqlab, o'rganishni boshlang!\n\n` +
-        `💡 Maslahat: Lug'at sahifasi yoki inglizcha yangiliklar rasmini yuklang`,
+        `4️⃣ Flashcard saqlab, o'rganishni boshlang!`,
         { parse_mode: 'Markdown' }
       );
     });
-    this.bot.launch().catch(err => {
-      this.logger.error(`Bot xatosi: ${err.message}`);
-    });
-    this.logger.log('✅ Bot polling ishga tushdi');
-    this.logger.log('✅ Bot service initialized');
+
+    // Webhook o'rnatamiz (polling emas!)
+    const webhookUrl = `https://memorix-r9gk.onrender.com/webhook`;
+    await this.bot.telegram.setWebhook(webhookUrl);
+    this.logger.log(`✅ Webhook set: ${webhookUrl}`);
   }
 
   getBot() {
