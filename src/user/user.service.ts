@@ -77,69 +77,58 @@ export class UserService {
      * - Nechta flashcard bor
      * - Subscription holati
      */
-    async getStats(id: number) {
-        const user = await this.findOne(id);
-
-        const deckCount = await this.prisma.deck.count({
-            where: { userId: id },
+    async getStats(userId: number) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                decks: { include: { flashcards: true } },
+                subscription: true,
+                sessions: true,
+            },
         });
 
-        const flashcardCount = await this.prisma.flashcard.count({
-            where: { deck: { userId: id } },
-        });
+        if (!user) {
+            throw new NotFoundException(`User (ID: ${userId}) topilmadi`);
+        }
 
-        // Jami o'rganilgan so'zlar
-        const sessions = await this.prisma.studySession.findMany({
-            where: { userId: id },
-            orderBy: { studiedAt: 'desc' },
-        });
+        const decks = user.decks as Array<{ flashcards: Array<any> }>;
+        const sessions = user.sessions as Array<{ cardsStudied: number; studiedAt: Date }>;
 
+        const totalDecks = decks.length;
+        const totalFlashcards = decks.reduce((sum, d) => sum + d.flashcards.length, 0);
         const totalStudied = sessions.reduce((sum, s) => sum + s.cardsStudied, 0);
+        const plan = user.subscription?.plan ?? 'FREE';
 
         // Streak hisoblash
-        const streak = this.calcStreak(sessions.map(s => s.studiedAt));
-
-        // Haftalik faollik (oxirgi 7 kun)
         const today = new Date();
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 6);
+        today.setHours(0, 0, 0, 0);
+        let streak = 0;
+        for (let i = 0; i < 30; i++) {
+            const day = new Date(today);
+            day.setDate(today.getDate() - i);
+            const nextDay = new Date(day);
+            nextDay.setDate(day.getDate() + 1);
+            const hasSession = sessions.some(s => {
+                const d = new Date(s.studiedAt);
+                return d >= day && d < nextDay;
+            });
+            if (hasSession) streak++;
+            else if (i > 0) break;
+        }
 
-        const weekly = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(weekAgo);
-            d.setDate(weekAgo.getDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
-            const count = sessions
-                .filter(s => s.studiedAt.toISOString().split('T')[0] === dateStr)
-                .reduce((sum, s) => sum + s.cardsStudied, 0);
-            return { date: dateStr, count };
+        // Haftalik (Du-Ya)
+        const weekly = Array(7).fill(0);
+        sessions.forEach(s => {
+            const d = new Date(s.studiedAt);
+            const dayOfWeek = d.getDay();
+            const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const copy = new Date(d);
+            copy.setHours(0, 0, 0, 0);
+            const diffDays = Math.floor((today.getTime() - copy.getTime()) / 86400000);
+            if (diffDays < 7) weekly[idx] += s.cardsStudied;
         });
 
-        return {
-            userId: id,
-            firstName: user.firstName,
-            plan: user.subscription?.plan ?? 'FREE',
-            totalDecks: deckCount,
-            totalFlashcards: flashcardCount,
-            totalStudied,
-            streak,
-            weekly,
-            memberSince: user.createdAt,
-        };
-    }
-
-    private calcStreak(dates: Date[]): number {
-        if (dates.length === 0) return 0;
-        const unique = [...new Set(dates.map(d => d.toISOString().split('T')[0]))].sort().reverse();
-        let streak = 0;
-        const today = new Date().toISOString().split('T')[0];
-        for (let i = 0; i < unique.length; i++) {
-            const expected = new Date();
-            expected.setDate(expected.getDate() - i);
-            if (unique[i] === expected.toISOString().split('T')[0]) {
-                streak++;
-            } else break;
-        }
-        return streak;
+        return { totalDecks, totalFlashcards, totalStudied, streak, weekly, plan };
     }
 
     async remove(id: number) {
