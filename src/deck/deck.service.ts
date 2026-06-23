@@ -1,6 +1,6 @@
 // src/deck/deck.service.ts
 
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDeckDto, UpdateDeckDto } from './dto/deck.dto';
 
@@ -9,6 +9,22 @@ export class DeckService {
     constructor(private prisma: PrismaService) { }
 
     async create(dto: CreateDeckDto) {
+        const sub = await this.prisma.subscription.findUnique({
+            where: { userId: dto.userId },
+        });
+        const isPro = sub?.plan === 'PRO' || sub?.plan === 'B2B';
+
+        if (!isPro) {
+            const deckCount = await this.prisma.deck.count({
+                where: { userId: dto.userId },
+            });
+            if (deckCount >= 3) {
+                throw new BadRequestException(
+                    "FREE rejada maksimum 3 ta to'plam yaratish mumkin. PRO ga o'ting!"
+                );
+            }
+        }
+
         return this.prisma.deck.create({
             data: {
                 title: dto.title || "Yangi to'plam",

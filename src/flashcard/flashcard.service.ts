@@ -1,6 +1,6 @@
 // src/flashcard/flashcard.service.ts
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
     CreateFlashcardDto,
@@ -31,7 +31,24 @@ export class FlashcardService {
      * Masalan: AI rasmdan 15 ta so'z ajratdi → hammasini bitta so'rovda DB ga yozadi
      */
     async bulkCreate(dto: BulkCreateFlashcardDto) {
-        await this.checkDeckExists(dto.deckId);
+        const deck = await this.checkDeckExists(dto.deckId);
+
+        // Subscription tekshirish
+        const sub = await this.prisma.subscription.findUnique({
+            where: { userId: deck.userId },
+        });
+        const isPro = sub?.plan === 'PRO' || sub?.plan === 'B2B';
+
+        if (!isPro) {
+            const cardCount = await this.prisma.flashcard.count({
+                where: { deck: { userId: deck.userId } },
+            });
+            if (cardCount >= 30) {
+                throw new BadRequestException(
+                    'FREE rejada maksimum 30 ta so\'z saqlash mumkin. PRO ga o\'ting!'
+                );
+            }
+        }
 
         const created = await this.prisma.flashcard.createMany({
             data: dto.flashcards.map((card) => ({
@@ -87,7 +104,10 @@ export class FlashcardService {
     }
 
     private async checkDeckExists(deckId: number) {
-        const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
+        const deck = await this.prisma.deck.findUnique({
+            where: { id: deckId },
+            include: { user: true },
+        });
         if (!deck) {
             throw new NotFoundException(`Deck (ID: ${deckId}) topilmadi`);
         }
