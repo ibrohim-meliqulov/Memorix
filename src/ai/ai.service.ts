@@ -5,9 +5,9 @@ import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface GeneratedFlashcard {
-    frontText: string;   // Inglizcha so'z
-    backText: string;    // O'zbekcha tarjima
-    example: string;     // Misol jumla (inglizcha)
+    frontText: string;
+    backText: string;
+    example: string;
 }
 
 @Injectable()
@@ -24,193 +24,160 @@ export class AiService {
         this.genAI = new GoogleGenerativeAI(apiKey);
     }
 
-    /**
-     * Matndan inglizcha so'zlarni ajratib, o'zbekcha tarjima + misol bilan qaytaradi
-     */
+    private readonly langMap: Record<string, { from: string; to: string; example: string }> = {
+        english: { from: 'inglizcha', to: "o'zbekcha", example: 'inglizcha' },
+        russian: { from: 'ruscha', to: "o'zbekcha", example: 'ruscha' },
+        korean: { from: 'koreycha', to: "o'zbekcha", example: 'koreycha' },
+    };
+
     async generateFlashcardsFromText(
         text: string,
         maxWords = 15,
+        language = 'english',
     ): Promise<GeneratedFlashcard[]> {
         if (!text || text.trim().length === 0) {
-            throw new BadRequestException('Matn bo\'sh bo\'lishi mumkin emas');
+            throw new BadRequestException("Matn bo'sh bo'lishi mumkin emas");
         }
 
-        const prompt = this.buildTextPrompt(text, maxWords);
+        const lang = this.langMap[language] ?? this.langMap['english'];
+        const prompt = this.buildTextPrompt(text, maxWords, lang);
 
         try {
             const model = this.genAI.getGenerativeModel({ model: this.modelName });
             const result = await model.generateContent(prompt);
-            const responseText = result.response.text();
-
-            return this.parseFlashcardResponse(responseText);
+            return this.parseFlashcardResponse(result.response.text());
         } catch (error: any) {
             this.logger.error('Gemini API xatosi (text):', error.message);
             if (error.status === 429 || error.message?.includes('429')) {
-                throw new BadRequestException(
-                    'AI hozir band. Biroz kutib qayta urinib ko\'ring.',
-                );
+                throw new BadRequestException('AI hozir band. Biroz kutib qayta urinib ko\'ring.');
             }
-            throw new BadRequestException(
-                'AI orqali so\'z ajratishda xatolik yuz berdi.',
-            );
+            throw new BadRequestException("AI orqali so'z ajratishda xatolik yuz berdi.");
         }
     }
 
-    /**
-     * Rasmdan (base64) inglizcha so'zlarni aniqlab, tarjima qiladi
-     */
     async generateFlashcardsFromImage(
         base64Image: string,
         mimeType: string,
         maxWords = 15,
+        language = 'english',
     ): Promise<GeneratedFlashcard[]> {
-        const prompt = this.buildImagePrompt(maxWords);
+        const lang = this.langMap[language] ?? this.langMap['english'];
+        const prompt = this.buildImagePrompt(maxWords, lang);
 
         try {
             const model = this.genAI.getGenerativeModel({ model: this.modelName });
-
             const result = await model.generateContent([
                 prompt,
-                {
-                    inlineData: {
-                        data: base64Image,
-                        mimeType: mimeType, // image/jpeg, image/png
-                    },
-                },
+                { inlineData: { data: base64Image, mimeType } },
             ]);
-
-            const responseText = result.response.text();
-            return this.parseFlashcardResponse(responseText);
+            return this.parseFlashcardResponse(result.response.text());
         } catch (error) {
             this.logger.error('Gemini API xatosi (image):', error);
-            throw new BadRequestException(
-                'Rasmni tahlil qilishda xatolik yuz berdi. Qayta urinib ko\'ring.',
-            );
+            throw new BadRequestException('Rasmni tahlil qilishda xatolik yuz berdi.');
         }
     }
 
-    /**
-     * Bitta so'zni tezkor tarjima qilish (qo'lda qo'shilganda)
-     */
-    async translateSingleWord(word: string): Promise<GeneratedFlashcard> {
+    async translateSingleWord(word: string, language = 'english'): Promise<GeneratedFlashcard> {
+        const lang = this.langMap[language] ?? this.langMap['english'];
         const prompt = `
-Quyidagi inglizcha so'zni o'zbekchaga tarjima qil va misol jumla yoz.
+Quyidagi ${lang.from} so'zni ${lang.to} ga tarjima qil va ${lang.example} tilida misol jumla yoz.
 So'z: "${word}"
 
 FAQAT shu JSON formatda javob ber, boshqa hech narsa yozma:
 {
   "frontText": "${word}",
-  "backText": "o'zbekcha tarjima",
-  "example": "Inglizcha misol jumla shu so'z bilan"
+  "backText": "${lang.to} tarjima",
+  "example": "${lang.example} tilida misol jumla"
 }
 `;
-
         try {
             const model = this.genAI.getGenerativeModel({ model: this.modelName });
             const result = await model.generateContent(prompt);
-            const responseText = result.response.text();
-            const parsed = this.parseFlashcardResponse(responseText);
-
-            if (parsed.length === 0) {
-                throw new Error('Tarjima topilmadi');
-            }
+            const parsed = this.parseFlashcardResponse(result.response.text());
+            if (parsed.length === 0) throw new Error('Tarjima topilmadi');
             return parsed[0];
         } catch (error) {
             this.logger.error('Gemini API xatosi (single word):', error);
-            throw new BadRequestException('So\'zni tarjima qilishda xatolik yuz berdi.');
+            throw new BadRequestException("So'zni tarjima qilishda xatolik yuz berdi.");
         }
     }
 
-    // ─────────────────────────────────────────
-    // PRIVATE HELPERS
-    // ─────────────────────────────────────────
+    // ─── PRIVATE HELPERS ───
 
-    private buildTextPrompt(text: string, maxWords: number): string {
+    private buildTextPrompt(
+        text: string,
+        maxWords: number,
+        lang: { from: string; to: string; example: string },
+    ): string {
         return `
-Sen til o'rganish yordamchisisan. Quyidagi matndan eng muhim/foydali inglizcha so'zlarni ajratib ol (ko'pi bilan ${maxWords} ta), har biriga o'zbekcha tarjima va misol jumla yoz.
+Sen til o'rganish yordamchisisan. Quyidagi matndan eng muhim ${lang.from} so'zlarni ajratib ol (ko'pi bilan ${maxWords} ta), har biriga ${lang.to} tarjima va ${lang.example} tilida misol jumla yoz.
 
 Qoidalar:
-- Faqat asosiy so'zlarni tanla (so'zlar takrorlanmasin)
-- "the", "a", "is" kabi oddiy so'zlarni o'tkazib yubor
+- Faqat asosiy so'zlarni tanla (takrorlanmasin)
+- Juda oddiy so'zlarni o'tkazib yubor
 - Tarjima aniq va tabiiy o'zbek tilida bo'lsin
-- Misol jumla original matndan yoki o'xshash kontekstdan bo'lsin
+- Misol jumla ${lang.example} tilida bo'lsin
 
 Matn:
 """
 ${text}
 """
 
-FAQAT shu JSON array formatda javob ber, boshqa hech qanday matn, izoh yoki markdown belgisi (\`\`\`) qo'shma:
+FAQAT shu JSON array formatda javob ber, hech qanday markdown yoki izoh qo'shma:
 [
   {
-    "frontText": "inglizcha so'z",
-    "backText": "o'zbekcha tarjima",
-    "example": "Inglizcha misol jumla"
+    "frontText": "${lang.from} so'z",
+    "backText": "${lang.to} tarjima",
+    "example": "${lang.example} tilida misol jumla"
   }
 ]
 `;
     }
 
-    private buildImagePrompt(maxWords: number): string {
+    private buildImagePrompt(
+        maxWords: number,
+        lang: { from: string; to: string; example: string },
+    ): string {
         return `
-Sen til o'rganish yordamchisisan. Bu rasmda inglizcha matn yoki so'zlar bor. 
+Sen til o'rganish yordamchisisan. Bu rasmda ${lang.from} matn yoki so'zlar bor.
 
 Vazifang:
-1. Rasmdagi barcha inglizcha so'z/matnni o'qi (OCR)
-2. Eng muhim/foydali so'zlarni tanla (ko'pi bilan ${maxWords} ta)
-3. Har biriga o'zbekcha tarjima va misol jumla yoz
+1. Rasmdagi barcha ${lang.from} so'z/matnni o'qi
+2. Eng muhim so'zlarni tanla (ko'pi bilan ${maxWords} ta)
+3. Har biriga ${lang.to} tarjima va ${lang.example} tilida misol jumla yoz
 
-Qoidalar:
-- Agar rasmda alohida so'zlar ro'yxati bo'lsa (masalan lug'at sahifasi), barchasini ol
-- Agar rasmda gap/matn bo'lsa, undagi muhim so'zlarni ajrat
-- "the", "a", "is" kabi oddiy so'zlarni o'tkazib yubor
-- Agar rasmda inglizcha matn umuman bo'lmasa, bo'sh array qaytar: []
+Agar rasmda ${lang.from} matn umuman bo'lmasa, bo'sh array qaytar: []
 
-FAQAT shu JSON array formatda javob ber, boshqa hech qanday matn, izoh yoki markdown belgisi qo'shma:
+FAQAT shu JSON array formatda javob ber, hech qanday markdown yoki izoh qo'shma:
 [
   {
-    "frontText": "inglizcha so'z",
-    "backText": "o'zbekcha tarjima",
-    "example": "Inglizcha misol jumla"
+    "frontText": "${lang.from} so'z",
+    "backText": "${lang.to} tarjima",
+    "example": "${lang.example} tilida misol jumla"
   }
 ]
 `;
     }
 
-    /**
-     * Gemini javobidan JSON ni xavfsiz ajratib oladi
-     * (Gemini ba'zan ```json ... ``` bilan o'rab yuborishi mumkin)
-     */
     private parseFlashcardResponse(responseText: string): GeneratedFlashcard[] {
         try {
-            // Markdown code block bo'lsa tozalash
             let cleaned = responseText.trim();
             cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/, '');
             cleaned = cleaned.replace(/^```\s*/, '');
 
             const parsed = JSON.parse(cleaned);
-
-            // Bitta obyekt qaytgan bo'lsa, arrayga o'rab qo'yamiz
             const array = Array.isArray(parsed) ? parsed : [parsed];
 
-            // Validatsiya — kerakli fieldlar borligini tekshirish
             return array
-                .filter(
-                    (item) =>
-                        item &&
-                        typeof item.frontText === 'string' &&
-                        typeof item.backText === 'string',
-                )
-                .map((item) => ({
+                .filter(item => item && typeof item.frontText === 'string' && typeof item.backText === 'string')
+                .map(item => ({
                     frontText: item.frontText.trim(),
                     backText: item.backText.trim(),
                     example: item.example?.trim() || '',
                 }));
         } catch (error) {
-            this.logger.error('JSON parse xatosi:', error, 'Raw response:', responseText);
-            throw new BadRequestException(
-                'AI javobini qayta ishlashda xatolik yuz berdi.',
-            );
+            this.logger.error('JSON parse xatosi:', error, 'Raw:', responseText);
+            throw new BadRequestException('AI javobini qayta ishlashda xatolik yuz berdi.');
         }
     }
 }

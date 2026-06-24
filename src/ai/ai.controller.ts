@@ -41,16 +41,13 @@ export class AiController {
      * Body: { "text": "...", "maxWords": 15 }
      */
     @Post('generate-from-text')
-    async generateFromText(@Body() dto: GenerateFromTextDto) {
+    async generateFromText(@Body() body: { text: string; maxWords?: number; language?: string }) {
         const flashcards = await this.aiService.generateFlashcardsFromText(
-            dto.text,
-            dto.maxWords,
+            body.text,
+            body.maxWords ?? 15,
+            body.language ?? 'english',  // ← QO'SHILDI
         );
-        return {
-            success: true,
-            count: flashcards.length,
-            flashcards,
-        };
+        return { flashcards };
     }
 
     /**
@@ -59,29 +56,18 @@ export class AiController {
      */
     @Post('generate-from-image')
     @UseInterceptors(FileInterceptor('image'))
-    async generateFromImage(@UploadedFile() file: Express.Multer.File) {
-        if (!file) {
-            throw new BadRequestException('Rasm fayli yuborilmadi');
-        }
-
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!allowedTypes.includes(file.mimetype)) {
-            throw new BadRequestException(
-                'Faqat JPEG, PNG yoki WEBP formatdagi rasm qabul qilinadi',
-            );
-        }
-
-        const base64Image = file.buffer.toString('base64');
+    async generateFromImage(
+        @UploadedFile() file: Express.Multer.File,
+        @Body('language') language = 'english',  // ← QO'SHILDI
+    ) {
+        const base64 = file.buffer.toString('base64');
         const flashcards = await this.aiService.generateFlashcardsFromImage(
-            base64Image,
+            base64,
             file.mimetype,
+            15,
+            language,  // ← QO'SHILDI
         );
-
-        return {
-            success: true,
-            count: flashcards.length,
-            flashcards,
-        };
+        return { flashcards };
     }
 
     /**
