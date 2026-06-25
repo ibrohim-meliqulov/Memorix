@@ -2,7 +2,7 @@
 
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
 export interface GeneratedFlashcard {
     frontText: string;
@@ -13,16 +13,18 @@ export interface GeneratedFlashcard {
 @Injectable()
 export class AiService {
     private readonly logger = new Logger(AiService.name);
-    private readonly genAI: GoogleGenerativeAI;
-    private readonly modelName = 'gemini-1.5-flash';
-
+    private readonly client: OpenAI;
+    private readonly modelName = 'grok-3-mini';
 
     constructor(private configService: ConfigService) {
-        const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+        const apiKey = this.configService.get<string>('GROK_API_KEY');
         if (!apiKey) {
-            throw new Error('GEMINI_API_KEY .env faylda topilmadi!');
+            throw new Error('GROK_API_KEY .env faylda topilmadi!');
         }
-        this.genAI = new GoogleGenerativeAI(apiKey);
+        this.client = new OpenAI({
+            apiKey,
+            baseURL: 'https://api.x.ai/v1',
+        });
     }
 
     private readonly langMap: Record<string, { from: string; to: string; example: string }> = {
@@ -44,13 +46,17 @@ export class AiService {
         const prompt = this.buildTextPrompt(text, maxWords, lang);
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
-            const result = await model.generateContent(prompt);
-            return this.parseFlashcardResponse(result.response.text());
+            const response = await this.client.chat.completions.create({
+                model: this.modelName,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: 2000,
+            });
+            const raw = response.choices[0].message.content || '[]';
+            return this.parseFlashcardResponse(raw);
         } catch (error: any) {
-            this.logger.error('Gemini API xatosi (text):', error.message);
-            if (error.status === 429 || error.message?.includes('429')) {
-                throw new BadRequestException('AI hozir band. Biroz kutib qayta urinib ko\'ring.');
+            this.logger.error('Grok API xatosi (text):', error.message);
+            if (error.status === 429) {
+                throw new BadRequestException("AI hozir band. Biroz kutib qayta urinib ko'ring.");
             }
             throw new BadRequestException("AI orqali so'z ajratishda xatolik yuz berdi.");
         }
@@ -66,16 +72,28 @@ export class AiService {
         const prompt = this.buildImagePrompt(maxWords, lang);
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
-            const result = await model.generateContent([
-                prompt,
-                { inlineData: { data: base64Image, mimeType } },
-            ]);
-            return this.parseFlashcardResponse(result.response.text());
+            const response = await this.client.chat.completions.create({
+                model: 'grok-2-vision',
+                messages: [{
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${mimeType};base64,${base64Image}`,
+                            },
+                        },
+                    ],
+                }],
+                max_tokens: 2000,
+            });
+            const raw = response.choices[0].message.content || '[]';
+            return this.parseFlashcardResponse(raw);
         } catch (error: any) {
-            this.logger.error('Gemini API xatosi (image):', error);
-            if (error.status === 429 || error.message?.includes('429')) {
-                throw new BadRequestException('AI hozir band. Biroz kutib qayta urinib ko\'ring.');
+            this.logger.error('Grok vision xatosi:', error.message);
+            if (error.status === 429) {
+                throw new BadRequestException("AI hozir band. Biroz kutib qayta urinib ko'ring.");
             }
             throw new BadRequestException('Rasmni tahlil qilishda xatolik yuz berdi.');
         }
@@ -83,25 +101,22 @@ export class AiService {
 
     async translateSingleWord(word: string, language = 'english'): Promise<GeneratedFlashcard> {
         const lang = this.langMap[language] ?? this.langMap['english'];
-        const prompt = `
-Quyidagi ${lang.from} so'zni ${lang.to} ga tarjima qil va ${lang.example} tilida misol jumla yoz.
-So'z: "${word}"
+        const prompt = `"${word}" ${lang.from} so'zini ${lang.to} ga tarjima qil va ${lang.example} tilida misol jumla yoz.
+FAQAT JSON formatda javob ber:
+{"frontText":"${word}","backText":"tarjima","example":"misol jumla"}`;
 
-FAQAT shu JSON formatda javob ber, boshqa hech narsa yozma:
-{
-  "frontText": "${word}",
-  "backText": "${lang.to} tarjima",
-  "example": "${lang.example} tilida misol jumla"
-}
-`;
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
-            const result = await model.generateContent(prompt);
-            const parsed = this.parseFlashcardResponse(result.response.text());
+            const response = await this.client.chat.completions.create({
+                model: this.modelName,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: 300,
+            });
+            const raw = response.choices[0].message.content || '{}';
+            const parsed = this.parseFlashcardResponse(raw);
             if (parsed.length === 0) throw new Error('Tarjima topilmadi');
             return parsed[0];
-        } catch (error) {
-            this.logger.error('Gemini API xatosi (single word):', error);
+        } catch (error: any) {
+            this.logger.error('Grok API xatosi (single word):', error.message);
             throw new BadRequestException("So'zni tarjima qilishda xatolik yuz berdi.");
         }
     }
@@ -113,8 +128,7 @@ FAQAT shu JSON formatda javob ber, boshqa hech narsa yozma:
         maxWords: number,
         lang: { from: string; to: string; example: string },
     ): string {
-        return `
-Sen til o'rganish yordamchisisan. Quyidagi matndan eng muhim ${lang.from} so'zlarni ajratib ol (ko'pi bilan ${maxWords} ta), har biriga ${lang.to} tarjima va ${lang.example} tilida misol jumla yoz.
+        return `Sen til o'rganish yordamchisisan. Quyidagi matndan eng muhim ${lang.from} so'zlarni ajratib ol (ko'pi bilan ${maxWords} ta), har biriga ${lang.to} tarjima va ${lang.example} tilida misol jumla yoz.
 
 Qoidalar:
 - Faqat asosiy so'zlarni tanla (takrorlanmasin)
@@ -128,39 +142,23 @@ ${text}
 """
 
 FAQAT shu JSON array formatda javob ber, hech qanday markdown yoki izoh qo'shma:
-[
-  {
-    "frontText": "${lang.from} so'z",
-    "backText": "${lang.to} tarjima",
-    "example": "${lang.example} tilida misol jumla"
-  }
-]
-`;
+[{"frontText":"so'z","backText":"tarjima","example":"misol"}]`;
     }
 
     private buildImagePrompt(
         maxWords: number,
         lang: { from: string; to: string; example: string },
     ): string {
-        return `
-Sen til o'rganish yordamchisisan. Bu rasmda ${lang.from} matn yoki so'zlar bor.
+        return `Sen til o'rganish yordamchisisan. Bu rasmda ${lang.from} matn yoki so'zlar bor.
 
 Vazifang:
 1. Rasmdagi barcha ${lang.from} so'z/matnni o'qi
 2. Eng muhim so'zlarni tanla (ko'pi bilan ${maxWords} ta)
 3. Har biriga ${lang.to} tarjima va ${lang.example} tilida misol jumla yoz
 
-Agar rasmda ${lang.from} matn umuman bo'lmasa, bo'sh array qaytar: []
+Agar rasmda ${lang.from} matn bo'lmasa: []
 
-FAQAT shu JSON array formatda javob ber, hech qanday markdown yoki izoh qo'shma:
-[
-  {
-    "frontText": "${lang.from} so'z",
-    "backText": "${lang.to} tarjima",
-    "example": "${lang.example} tilida misol jumla"
-  }
-]
-`;
+FAQAT JSON array: [{"frontText":"so'z","backText":"tarjima","example":"misol"}]`;
     }
 
     private parseFlashcardResponse(responseText: string): GeneratedFlashcard[] {
