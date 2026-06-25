@@ -1,6 +1,6 @@
 // src/flashcard/flashcard.service.ts
 
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
     CreateFlashcardDto,
@@ -14,7 +14,6 @@ export class FlashcardService {
 
     async create(dto: CreateFlashcardDto) {
         await this.checkDeckExists(dto.deckId);
-
         return this.prisma.flashcard.create({
             data: {
                 deckId: dto.deckId,
@@ -26,29 +25,9 @@ export class FlashcardService {
         });
     }
 
-    /**
-     * AI natijasidan kelgan bir nechta flashcardni birdaniga saqlaydi
-     * Masalan: AI rasmdan 15 ta so'z ajratdi → hammasini bitta so'rovda DB ga yozadi
-     */
     async bulkCreate(dto: BulkCreateFlashcardDto) {
         const deck = await this.checkDeckExists(dto.deckId);
-
-        // Subscription tekshirish
-        const sub = await this.prisma.subscription.findUnique({
-            where: { userId: deck.userId },
-        });
-        const isPro = sub?.plan === 'PRO' || sub?.plan === 'B2B';
-
-        if (!isPro) {
-            const cardCount = await this.prisma.flashcard.count({
-                where: { deck: { userId: deck.userId } },
-            });
-            if (cardCount >= 30) {
-                throw new BadRequestException(
-                    'FREE rejada maksimum 30 ta so\'z saqlash mumkin. PRO ga o\'ting!'
-                );
-            }
-        }
+        await this.checkFlashcardLimit(deck.userId);
 
         const created = await this.prisma.flashcard.createMany({
             data: dto.flashcards.map((card) => ({
@@ -68,7 +47,6 @@ export class FlashcardService {
 
     async findAllByDeck(deckId: number) {
         await this.checkDeckExists(deckId);
-
         return this.prisma.flashcard.findMany({
             where: { deckId },
             orderBy: { createdAt: 'asc' },
@@ -76,47 +54,62 @@ export class FlashcardService {
     }
 
     async findOne(id: number) {
-        const flashcard = await this.prisma.flashcard.findUnique({
-            where: { id },
-        });
-
-        if (!flashcard) {
-            throw new NotFoundException(`Flashcard (ID: ${id}) topilmadi`);
-        }
-
+        const flashcard = await this.prisma.flashcard.findUnique({ where: { id } });
+        if (!flashcard) throw new NotFoundException(`Flashcard (ID: ${id}) topilmadi`);
         return flashcard;
     }
 
     async update(id: number, dto: UpdateFlashcardDto) {
-        await this.findOne(id); // mavjudligini tekshirish
-
-        return this.prisma.flashcard.update({
-            where: { id },
-            data: dto,
-        });
+        await this.findOne(id);
+        return this.prisma.flashcard.update({ where: { id }, data: dto });
     }
 
     async remove(id: number) {
         await this.findOne(id);
-
         await this.prisma.flashcard.delete({ where: { id } });
         return { success: true, message: "Flashcard o'chirildi" };
     }
+
+    async saveSession(userId: number, cardsStudied: number) {
+        return this.prisma.studySession.create({
+            data: { userId, cardsStudied },
+        });
+    }
+
+    // ─── PRIVATE ───
 
     private async checkDeckExists(deckId: number) {
         const deck = await this.prisma.deck.findUnique({
             where: { id: deckId },
             include: { user: true },
         });
-        if (!deck) {
-            throw new NotFoundException(`Deck (ID: ${deckId}) topilmadi`);
-        }
+        if (!deck) throw new NotFoundException(`Deck (ID: ${deckId}) topilmadi`);
         return deck;
     }
 
-    async saveSession(userId: number, cardsStudied: number) {
-        return this.prisma.studySession.create({
-            data: { userId, cardsStudied }
-        });
+    private async checkFlashcardLimit(userId: number) {
+        const sub = await this.prisma.subscription.findUnique({ where: { userId } });
+        const plan = sub?.plan ?? 'FREE';
+
+        const cardLimits: Record<string, number> = {
+            FREE: 30,
+            STARTER: 100,
+            PRO: Infinity,
+            B2B: Infinity,
+        };
+
+        const limit = cardLimits[plan] ?? 30;
+
+        if (limit !== Infinity) {
+            const total = await this.prisma.flashcard.count({
+                where: { deck: { userId } },
+            });
+            if (total >= limit) {
+                const upgrade = plan === 'FREE' ? 'Starter yoki Premium' : 'Premium';
+                throw new BadRequestException(
+                    `${plan} rejada ko'pi bilan ${limit} ta so'z bo'lishi mumkin. ${upgrade} ga o'ting!`
+                );
+            }
+        }
     }
 }

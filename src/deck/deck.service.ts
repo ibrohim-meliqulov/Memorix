@@ -9,21 +9,7 @@ export class DeckService {
     constructor(private prisma: PrismaService) { }
 
     async create(dto: CreateDeckDto) {
-        const sub = await this.prisma.subscription.findUnique({
-            where: { userId: dto.userId },
-        });
-        const isPro = sub?.plan === 'PRO' || sub?.plan === 'B2B';
-
-        if (!isPro) {
-            const deckCount = await this.prisma.deck.count({
-                where: { userId: dto.userId },
-            });
-            if (deckCount >= 3) {
-                throw new BadRequestException(
-                    "FREE rejada maksimum 3 ta to'plam yaratish mumkin. PRO ga o'ting!"
-                );
-            }
-        }
+        await this.checkPlanLimit(dto.userId);
 
         return this.prisma.deck.create({
             data: {
@@ -39,9 +25,7 @@ export class DeckService {
             where: { userId },
             orderBy: { createdAt: 'desc' },
             include: {
-                _count: {
-                    select: { flashcards: true },
-                },
+                _count: { select: { flashcards: true } },
             },
         });
     }
@@ -50,12 +34,8 @@ export class DeckService {
         const deck = await this.prisma.deck.findUnique({
             where: { id },
             include: {
-                flashcards: {
-                    orderBy: { createdAt: 'asc' },
-                },
-                _count: {
-                    select: { flashcards: true },
-                },
+                flashcards: { orderBy: { createdAt: 'asc' } },
+                _count: { select: { flashcards: true } },
             },
         });
 
@@ -68,34 +48,48 @@ export class DeckService {
 
     async update(id: number, userId: number, dto: UpdateDeckDto) {
         await this.checkOwnership(id, userId);
-
-        return this.prisma.deck.update({
-            where: { id },
-            data: dto,
-        });
+        return this.prisma.deck.update({ where: { id }, data: dto });
     }
 
     async remove(id: number, userId: number) {
         await this.checkOwnership(id, userId);
-
         await this.prisma.deck.delete({ where: { id } });
         return { success: true, message: "Deck o'chirildi" };
     }
 
-    /**
-     * Deck shu userga tegishli ekanligini tekshiradi
-     */
+    // ─── PRIVATE ───
+
+    private async checkPlanLimit(userId: number) {
+        const sub = await this.prisma.subscription.findUnique({
+            where: { userId },
+        });
+
+        const plan = sub?.plan ?? 'FREE';
+
+        const deckLimits: Record<string, number> = {
+            FREE: 3,
+            STARTER: 10,
+            PRO: Infinity,
+            B2B: Infinity,
+        };
+
+        const limit = deckLimits[plan] ?? 3;
+
+        if (limit !== Infinity) {
+            const deckCount = await this.prisma.deck.count({ where: { userId } });
+            if (deckCount >= limit) {
+                const upgrade = plan === 'FREE' ? 'Starter yoki Premium' : 'Premium';
+                throw new BadRequestException(
+                    `${plan} rejada ko'pi bilan ${limit} ta to'plam bo'lishi mumkin. ${upgrade} ga o'ting!`
+                );
+            }
+        }
+    }
+
     private async checkOwnership(deckId: number, userId: number) {
         const deck = await this.prisma.deck.findUnique({ where: { id: deckId } });
-
-        if (!deck) {
-            throw new NotFoundException(`Deck (ID: ${deckId}) topilmadi`);
-        }
-
-        if (deck.userId !== userId) {
-            throw new ForbiddenException('Bu deck sizga tegishli emas');
-        }
-
+        if (!deck) throw new NotFoundException(`Deck (ID: ${deckId}) topilmadi`);
+        if (deck.userId !== userId) throw new ForbiddenException('Bu deck sizga tegishli emas');
         return deck;
     }
 }

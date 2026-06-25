@@ -4,24 +4,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
+type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'B2B';
+
 @Injectable()
 export class UserService {
     constructor(private prisma: PrismaService) { }
 
-    /**
-     * Telegram orqali kirganda chaqiriladi:
-     * - Agar user mavjud bo'lsa -> qaytaradi
-     * - Mavjud bo'lmasa -> yangi yaratadi (FREE subscription bilan)
-     * Bu "findOrCreate" pattern - Telegram Mini App uchun ideal
-     */
     async findOrCreate(dto: CreateUserDto) {
         const existing = await this.prisma.user.findUnique({
             where: { telegramId: dto.telegramId },
         });
-
-        if (existing) {
-            return existing;
-        }
+        if (existing) return existing;
 
         return this.prisma.user.create({
             data: {
@@ -41,11 +34,7 @@ export class UserService {
             where: { id },
             include: { subscription: true },
         });
-
-        if (!user) {
-            throw new NotFoundException(`User (ID: ${id}) topilmadi`);
-        }
-
+        if (!user) throw new NotFoundException(`User (ID: ${id}) topilmadi`);
         return user;
     }
 
@@ -54,29 +43,15 @@ export class UserService {
             where: { telegramId },
             include: { subscription: true },
         });
-
-        if (!user) {
-            throw new NotFoundException('Foydalanuvchi topilmadi');
-        }
-
+        if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
         return user;
     }
 
     async update(id: number, dto: UpdateUserDto) {
         await this.findOne(id);
-
-        return this.prisma.user.update({
-            where: { id },
-            data: dto,
-        });
+        return this.prisma.user.update({ where: { id }, data: dto });
     }
 
-    /**
-     * Foydalanuvchi statistikasi:
-     * - Nechta deck yaratgan
-     * - Nechta flashcard bor
-     * - Subscription holati
-     */
     async getStats(userId: number) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -87,19 +62,25 @@ export class UserService {
             },
         });
 
-        if (!user) {
-            throw new NotFoundException(`User (ID: ${userId}) topilmadi`);
-        }
+        if (!user) throw new NotFoundException(`User (ID: ${userId}) topilmadi`);
 
-        const decks = user.decks as Array<{ flashcards: Array<any> }>;
-        const sessions = user.sessions as Array<{ cardsStudied: number; studiedAt: Date }>;
+        const decks = user.decks as any[];
+        const sessions = user.sessions as any[];
+        const plan = (user.subscription?.plan ?? 'FREE') as string;
 
         const totalDecks = decks.length;
-        const totalFlashcards = decks.reduce((sum, d) => sum + d.flashcards.length, 0);
-        const totalStudied = sessions.reduce((sum, s) => sum + s.cardsStudied, 0);
-        const plan = user.subscription?.plan ?? 'FREE';
+        const totalFlashcards = decks.reduce((sum: number, d: any) => sum + d.flashcards.length, 0);
+        const totalStudied = sessions.reduce((sum: number, s: any) => sum + s.cardsStudied, 0);
 
-        // Streak hisoblash
+        const planLimits: Record<string, { decks: number; cards: number }> = {
+            FREE: { decks: 3, cards: 30 },
+            STARTER: { decks: 10, cards: 100 },
+            PRO: { decks: Infinity, cards: Infinity },
+            B2B: { decks: Infinity, cards: Infinity },
+        };
+        const limits = planLimits[plan] ?? planLimits['FREE'];
+
+        // Streak
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let streak = 0;
@@ -108,7 +89,7 @@ export class UserService {
             day.setDate(today.getDate() - i);
             const nextDay = new Date(day);
             nextDay.setDate(day.getDate() + 1);
-            const hasSession = sessions.some(s => {
+            const hasSession = sessions.some((s: any) => {
                 const d = new Date(s.studiedAt);
                 return d >= day && d < nextDay;
             });
@@ -116,19 +97,25 @@ export class UserService {
             else if (i > 0) break;
         }
 
-        // Haftalik (Du-Ya)
+        // Haftalik
         const weekly = Array(7).fill(0);
-        sessions.forEach(s => {
+        sessions.forEach((s: any) => {
             const d = new Date(s.studiedAt);
-            const dayOfWeek = d.getDay();
-            const idx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            const idx = d.getDay() === 0 ? 6 : d.getDay() - 1;
             const copy = new Date(d);
             copy.setHours(0, 0, 0, 0);
             const diffDays = Math.floor((today.getTime() - copy.getTime()) / 86400000);
             if (diffDays < 7) weekly[idx] += s.cardsStudied;
         });
 
-        return { totalDecks, totalFlashcards, totalStudied, streak, weekly, plan };
+        return { totalDecks, totalFlashcards, totalStudied, streak, weekly, plan, limits };
+    }
+    async updatePlan(userId: number, plan: PlanType) {
+        return this.prisma.subscription.upsert({
+            where: { userId },
+            update: { plan: plan as any },
+            create: { userId, plan: plan as any },
+        });
     }
 
     async remove(id: number) {

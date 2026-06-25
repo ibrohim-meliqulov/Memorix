@@ -18,7 +18,7 @@ import type { CurrentUserData } from '../auth/current-user.decorator';
 
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   // GET /users/me  — joriy foydalanuvchi profili (himoyalangan)
   @UseGuards(JwtAuthGuard)
@@ -52,5 +52,13 @@ export class UserController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);
+  }
+
+  @Patch(':id/plan')
+  async updatePlan(
+    @Param('id') id: string,
+    @Body() body: { plan: 'FREE' | 'STARTER' | 'PRO' | 'B2B' }
+  ) {
+    return this.userService.updatePlan(+id, body.plan);
   }
 }
