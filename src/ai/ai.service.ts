@@ -14,7 +14,8 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private readonly modelName = 'gemini-1.5-flash';
+    private readonly modelName = 'gemini-2.0-flash';
+
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
