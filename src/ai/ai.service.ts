@@ -71,8 +71,11 @@ export class AiService {
                 { inlineData: { data: base64Image, mimeType } },
             ]);
             return this.parseFlashcardResponse(result.response.text());
-        } catch (error) {
+        } catch (error: any) {
             this.logger.error('Gemini API xatosi (image):', error);
+            if (error.status === 429 || error.message?.includes('429')) {
+                throw new BadRequestException('AI hozir band. Biroz kutib qayta urinib ko\'ring.');
+            }
             throw new BadRequestException('Rasmni tahlil qilishda xatolik yuz berdi.');
         }
     }
