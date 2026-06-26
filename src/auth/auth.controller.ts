@@ -1,6 +1,6 @@
 // src/auth/auth.controller.ts
 
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Res } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { TelegramAuthDto } from './dto/auth.dto';
 
@@ -8,17 +8,23 @@ import { TelegramAuthDto } from './dto/auth.dto';
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
-    // POST /auth/telegram
-    // Frontend: Telegram.WebApp.initData ni shu yerga yuboradi
     @Post('telegram')
     loginWithTelegram(@Body() dto: TelegramAuthDto) {
         return this.authService.loginWithTelegram(dto.initData);
     }
 
-    // POST /auth/dev-login
-    // FAQAT development uchun (Postman/curl bilan test qilish uchun)
     @Post('dev-login')
     loginDevMode(@Body('telegramId') telegramId: string) {
         return this.authService.loginDevMode(telegramId);
+    }
+
+    @Get('web')
+    async webLogin(@Query() query: Record<string, string>, @Res() res: any) {
+        try {
+            const result = await this.authService.verifyTelegramWebLogin(query);
+            res.redirect(`https://memorix-front.vercel.app?token=${result.accessToken}`);
+        } catch (err) {
+            res.redirect(`https://memorix-landing.vercel.app?error=auth_failed`);
+        }
     }
 }
