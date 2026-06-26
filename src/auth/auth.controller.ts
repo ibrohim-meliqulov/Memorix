@@ -23,9 +23,17 @@ export class AuthController {
     async webLogin(@Query() query: Record<string, string>, @Res() res: any) {
         try {
             const result = await this.authService.verifyTelegramWebLogin(query);
-            res.redirect(`https://memorix-front.vercel.app?token=${result.accessToken}`);
+            res.send(`
+          <html><body><script>
+            window.opener?.postMessage({token:'${result.accessToken}'},'*');
+            window.close();
+          </script></body></html>
+        `);
         } catch (err) {
-            res.redirect(`https://memorix-front.vercel.app?error=auth_failed`);
+            res.send(`<html><body><script>
+          window.opener?.postMessage({error:'auth_failed'},'*');
+          window.close();
+        </script></body></html>`);
         }
     }
 }
