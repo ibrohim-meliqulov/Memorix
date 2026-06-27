@@ -1,6 +1,5 @@
-// src/auth/auth.controller.ts
-
-import { Controller, Post, Body, Get, Query, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, Res, Req, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { TelegramAuthDto } from './dto/auth.dto';
 
@@ -18,22 +17,36 @@ export class AuthController {
         return this.authService.loginDevMode(telegramId);
     }
 
-    // auth.controller.ts
     @Get('web')
     async webLogin(@Query() query: Record<string, string>, @Res() res: any) {
         try {
             const result = await this.authService.verifyTelegramWebLogin(query);
-            res.send(`
-          <html><body><script>
-            window.opener?.postMessage({token:'${result.accessToken}'},'*');
-            window.close();
-          </script></body></html>
-        `);
+            res.send(`<html><body><script>
+                window.opener?.postMessage({token:'${result.accessToken}'},'*');
+                window.close();
+            </script></body></html>`);
         } catch (err) {
             res.send(`<html><body><script>
-          window.opener?.postMessage({error:'auth_failed'},'*');
-          window.close();
-        </script></body></html>`);
+                window.opener?.postMessage({error:'auth_failed'},'*');
+                window.close();
+            </script></body></html>`);
         }
+    }
+
+    // Google login boshlash
+    @Get('google')
+    @UseGuards(AuthGuard('google'))
+    googleLogin() { }
+
+    // Google callback
+    @Get('google/callback')
+    @UseGuards(AuthGuard('google'))
+    async googleCallback(@Req() req: any, @Res() res: any) {
+        const user = req.user;
+        const token = this.authService.generateTokenPublic(
+            user.id,
+            user.telegramId ?? `google_${user.googleId}`,
+        );
+        res.redirect(`https://memorix-front.vercel.app?token=${token}`);
     }
 }

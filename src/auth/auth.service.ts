@@ -55,7 +55,7 @@ export class AuthService {
       this.logger.log(`Yangi foydalanuvchi yaratildi: ${telegramId}`);
     }
 
-    const accessToken = this.generateToken(user.id, user.telegramId);
+    const accessToken = this.generateTokenPublic(user.id, user.telegramId);
     return { success: true, accessToken, user };
   }
 
@@ -92,7 +92,7 @@ export class AuthService {
       username: data.username,
     });
 
-    const accessToken = this.generateToken(user.id, user.telegramId);
+    const accessToken = this.generateTokenPublic(user.id, user.telegramId);
     return { accessToken, user };
   }
 
@@ -118,11 +118,11 @@ export class AuthService {
       });
     }
 
-    const accessToken = this.generateToken(user.id, user.telegramId);
+    const accessToken = this.generateTokenPublic(user.id, user.telegramId);
     return { success: true, accessToken, user };
   }
 
-  private generateToken(userId: number, telegramId: string): string {
+  generateTokenPublic(userId: number, telegramId: string): string {
     return this.jwtService.sign({ sub: userId, telegramId });
   }
 }

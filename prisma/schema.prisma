@@ -11,6 +11,8 @@ datasource db {
 model User {
   id         Int      @id @default(autoincrement())
   telegramId String   @unique
+  googleId   String?  @unique // ← qo'shing
+  email      String?  @unique // ← qo'shing
   username   String?
   firstName  String?
   createdAt  DateTime @default(now())

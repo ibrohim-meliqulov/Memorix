@@ -123,4 +123,39 @@ export class UserService {
         await this.prisma.user.delete({ where: { id } });
         return { success: true, message: "Foydalanuvchi o'chirildi" };
     }
+
+
+    async findOrCreateByGoogle(dto: {
+        googleId: string;
+        email: string;
+        firstName: string;
+        username: string;
+    }) {
+        // Email orqali mavjud userni topamiz
+        let user = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { googleId: dto.googleId },
+                    { email: dto.email }
+                ]
+            },
+            include: { subscription: true },
+        });
+
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    googleId: dto.googleId,
+                    email: dto.email,
+                    firstName: dto.firstName,
+                    username: dto.username,
+                    telegramId: `google_${dto.googleId}`,
+                    subscription: { create: { plan: 'FREE' } },
+                },
+                include: { subscription: true },
+            });
+        }
+
+        return user;
+    }
 }
