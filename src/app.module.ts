@@ -7,6 +7,7 @@ import { FlashcardModule } from './flashcard/flashcard.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { BotModule } from './bot/bot.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -22,5 +23,6 @@ import { BotModule } from './bot/bot.module';
     AuthModule,
     BotModule,
   ],
+  controllers: [AppController]
 })
-export class AppModule {}
+export class AppModule { }
