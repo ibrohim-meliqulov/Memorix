@@ -16,7 +16,7 @@ export class AiService {
     private readonly genAI: GoogleGenerativeAI;
 
     // Paid tier uchun eng asosiy, tezkor va arzon model nomi
-    private readonly modelName = 'gemini-1.5-flash';
+    private readonly modelName = 'gemini-2.5-flash';
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
