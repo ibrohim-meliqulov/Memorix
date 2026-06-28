@@ -1,6 +1,6 @@
 // src/user/dto/user.dto.ts
 
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
     @IsString()
@@ -24,4 +24,8 @@ export class UpdateUserDto {
     @IsOptional()
     @IsString()
     firstName?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    onboarded?: boolean;
 }

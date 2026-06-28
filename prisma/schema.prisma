@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -15,6 +13,7 @@ model User {
   email      String?  @unique // ← qo'shing
   username   String?
   firstName  String?
+  onboarded  Boolean  @default(false) // ← QO'SHING
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
