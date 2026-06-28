@@ -14,7 +14,7 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private readonly modelName = 'gemini-1.5-flash';
+    private model: any;
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -22,6 +22,10 @@ export class AiService {
             throw new Error('GEMINI_API_KEY .env faylda topilmadi!');
         }
         this.genAI = new GoogleGenerativeAI(apiKey);
+
+        this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+
+
 
         // HACK: Kutubxona v1beta ga so'rov yubormasligi uchun bazaviy URL'ni v1 ga o'zgartiramiz
         // Bu eski versiyada ham TypeScript xatosisiz v1 ga o'tishni ta'minlaydi
@@ -49,7 +53,7 @@ export class AiService {
         const prompt = this.buildTextPrompt(text, maxWords, lang);
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
+            const model = this.genAI.getGenerativeModel({ model: this.model });
             const result = await model.generateContent(prompt);
             return this.parseFlashcardResponse(result.response.text());
         } catch (error: any) {
@@ -71,7 +75,7 @@ export class AiService {
         const prompt = this.buildImagePrompt(maxWords, lang);
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
+            const model = this.genAI.getGenerativeModel({ model: this.model });
             const result = await model.generateContent([
                 prompt,
                 { inlineData: { data: base64Image, mimeType } },
@@ -92,7 +96,7 @@ export class AiService {
 FAQAT JSON: {"frontText":"${word}","backText":"tarjima","example":"misol jumla"}`;
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.modelName });
+            const model = this.genAI.getGenerativeModel({ model: this.model });
             const result = await model.generateContent(prompt);
             const parsed = this.parseFlashcardResponse(result.response.text());
             if (parsed.length === 0) throw new Error('Tarjima topilmadi');
