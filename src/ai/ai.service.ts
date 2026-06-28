@@ -15,15 +15,27 @@ export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
 
-    // Model nomini aniq versiyasini ko'rsatamiz. Bu v1beta'da ham, v1'da ham mavjud.
-    private readonly modelName = 'gemini-1.5-flash-002';
+    // Standart barqaror model nomi
+    private readonly modelName = 'gemini-1.5-flash';
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY .env faylda topilmadi!');
         }
+
         this.genAI = new GoogleGenerativeAI(apiKey);
+
+        // SDK ichidagi baseUrl ni majburlab v1 ga o'zgartiramiz, v1beta ga bormasligi uchun
+        try {
+            Object.defineProperty(this.genAI, 'baseUrl', {
+                value: 'https://generativelanguage.googleapis.com/v1',
+                writable: true,
+                configurable: true
+            });
+        } catch (e) {
+            this.logger.error('BaseUrl hack o\'xshamadi:', e);
+        }
     }
 
     private readonly langMap: Record<string, { from: string; to: string; example: string }> = {
