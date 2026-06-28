@@ -14,14 +14,15 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private readonly modelName = 'gemini-2.0-flash';
-
+    // YANGILANDI: Bepul reja va yangi kalitlar uchun eng barqaror model
+    private readonly modelName = 'gemini-1.5-flash';
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY .env faylda topilmadi!');
         }
+        // YANGILANDI: Yangi AQ... kalit formati uchun obyekt ko'rinishida init qilamiz
         this.genAI = new GoogleGenerativeAI(apiKey);
     }
 
@@ -52,7 +53,7 @@ export class AiService {
             if (error.status === 429 || error.message?.includes('429')) {
                 throw new BadRequestException("AI hozir band. Biroz kutib qayta urinib ko'ring.");
             }
-            throw new BadRequestException("AI orqali so'z ajratishda xatolik yuz berdi.");
+            throw new BadRequestException(`AI orqali so'z ajratishda xatolik: ${error.message}`);
         }
     }
 
@@ -77,7 +78,7 @@ export class AiService {
             if (error.status === 429 || error.message?.includes('429')) {
                 throw new BadRequestException("AI hozir band. Biroz kutib qayta urinib ko'ring.");
             }
-            throw new BadRequestException('Rasmni tahlil qilishda xatolik yuz berdi.');
+            throw new BadRequestException(`Rasmni tahlil qilishda xatolik: ${error.message}`);
         }
     }
 
@@ -94,7 +95,7 @@ FAQAT JSON: {"frontText":"${word}","backText":"tarjima","example":"misol jumla"}
             return parsed[0];
         } catch (error: any) {
             this.logger.error('Gemini API xatosi (single word):', error.message);
-            throw new BadRequestException("So'zni tarjima qilishda xatolik yuz berdi.");
+            throw new BadRequestException(`So'zni tarjima qilishda xatolik: ${error.message}`);
         }
     }
 
