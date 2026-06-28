@@ -14,7 +14,9 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private model: any;
+    private readonly modelName = 'gemini-1.5-flash-latest';
+
+
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -23,7 +25,6 @@ export class AiService {
         }
         this.genAI = new GoogleGenerativeAI(apiKey);
 
-        this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
 
 
 
@@ -53,7 +54,8 @@ export class AiService {
         const prompt = this.buildTextPrompt(text, maxWords, lang);
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.model });
+            // 3. Modelni chaqirish xuddi oldingidek toza string bilan bo'ladi:
+            const model = this.genAI.getGenerativeModel({ model: this.modelName });
             const result = await model.generateContent(prompt);
             return this.parseFlashcardResponse(result.response.text());
         } catch (error: any) {
@@ -75,7 +77,7 @@ export class AiService {
         const prompt = this.buildImagePrompt(maxWords, lang);
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.model });
+            const model = this.genAI.getGenerativeModel({ model: this.modelName });
             const result = await model.generateContent([
                 prompt,
                 { inlineData: { data: base64Image, mimeType } },
@@ -96,7 +98,7 @@ export class AiService {
 FAQAT JSON: {"frontText":"${word}","backText":"tarjima","example":"misol jumla"}`;
 
         try {
-            const model = this.genAI.getGenerativeModel({ model: this.model });
+            const model = this.genAI.getGenerativeModel({ model: this.modelName });
             const result = await model.generateContent(prompt);
             const parsed = this.parseFlashcardResponse(result.response.text());
             if (parsed.length === 0) throw new Error('Tarjima topilmadi');
