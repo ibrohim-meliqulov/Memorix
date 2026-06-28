@@ -14,7 +14,6 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    // YANGILANDI: Bepul reja va yangi kalitlar uchun eng barqaror model
     private readonly modelName = 'gemini-1.5-flash';
 
     constructor(private configService: ConfigService) {
@@ -22,8 +21,13 @@ export class AiService {
         if (!apiKey) {
             throw new Error('GEMINI_API_KEY .env faylda topilmadi!');
         }
-        // YANGILANDI: Yangi AQ... kalit formati uchun obyekt ko'rinishida init qilamiz
         this.genAI = new GoogleGenerativeAI(apiKey);
+
+        // HACK: Kutubxona v1beta ga so'rov yubormasligi uchun bazaviy URL'ni v1 ga o'zgartiramiz
+        // Bu eski versiyada ham TypeScript xatosisiz v1 ga o'tishni ta'minlaydi
+        if ((this.genAI as any).baseUrl) {
+            (this.genAI as any).baseUrl = 'https://generativelanguage.googleapis.com/v1';
+        }
     }
 
     private readonly langMap: Record<string, { from: string; to: string; example: string }> = {
