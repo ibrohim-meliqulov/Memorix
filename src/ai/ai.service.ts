@@ -14,9 +14,9 @@ export interface GeneratedFlashcard {
 export class AiService {
     private readonly logger = new Logger(AiService.name);
     private readonly genAI: GoogleGenerativeAI;
-    private readonly modelName = 'gemini-1.5-flash-latest';
 
-
+    // Model nomini aniq versiyasini ko'rsatamiz. Bu v1beta'da ham, v1'da ham mavjud.
+    private readonly modelName = 'gemini-1.5-flash-002';
 
     constructor(private configService: ConfigService) {
         const apiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -24,15 +24,6 @@ export class AiService {
             throw new Error('GEMINI_API_KEY .env faylda topilmadi!');
         }
         this.genAI = new GoogleGenerativeAI(apiKey);
-
-
-
-
-        // HACK: Kutubxona v1beta ga so'rov yubormasligi uchun bazaviy URL'ni v1 ga o'zgartiramiz
-        // Bu eski versiyada ham TypeScript xatosisiz v1 ga o'tishni ta'minlaydi
-        if ((this.genAI as any).baseUrl) {
-            (this.genAI as any).baseUrl = 'https://generativelanguage.googleapis.com/v1';
-        }
     }
 
     private readonly langMap: Record<string, { from: string; to: string; example: string }> = {
@@ -54,7 +45,6 @@ export class AiService {
         const prompt = this.buildTextPrompt(text, maxWords, lang);
 
         try {
-            // 3. Modelni chaqirish xuddi oldingidek toza string bilan bo'ladi:
             const model = this.genAI.getGenerativeModel({ model: this.modelName });
             const result = await model.generateContent(prompt);
             return this.parseFlashcardResponse(result.response.text());
