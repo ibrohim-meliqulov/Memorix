@@ -19,9 +19,10 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  decks        Deck[]
-  subscription Subscription?
-  sessions     StudySession[]
+  decks           Deck[]
+  subscription    Subscription?
+  sessions        StudySession[]
+  paymentRequests PaymentRequest[]
 }
 
 model Deck {
@@ -66,8 +67,27 @@ model StudySession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model PaymentRequest {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  plan      Plan
+  status    PaymentStatus @default(PENDING)
+  checkUrl  String // chek rasmi URL
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  PENDING // kutilmoqda
+  APPROVED // tasdiqlandi
+  REJECTED // rad etildi
+}
+
 enum Plan {
   FREE
+  STARTER
   PRO
   B2B
 }
