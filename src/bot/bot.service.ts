@@ -30,7 +30,7 @@ export class BotService implements OnModuleInit {
             inline_keyboard: [[
               {
                 text: '🚀 Memorix ga kirish',
-                web_app: { url: 'https://memorix-landing-sand.vercel.app' }  // ← frontend URL
+                url: 'https://memorix-landing-sand.vercel.app'  // web_app emas, url
               }
             ]]
           }
