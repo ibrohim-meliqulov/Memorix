@@ -29,8 +29,8 @@ export class BotService implements OnModuleInit {
           reply_markup: {
             inline_keyboard: [[
               {
-                text: '🚀 Memorix ga kirish',
-                url: 'https://memorix-landing-sand.vercel.app/auth'
+                text: '🔐 Google orqali kirish',
+                url: 'https://memorix-r9gk.onrender.com/auth/google'
               }
             ]]
           }
