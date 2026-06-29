@@ -2,7 +2,7 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import { UpdateUserDto } from './dto/user.dto';
 
 type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'B2B';
 
@@ -10,25 +10,50 @@ type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'B2B';
 export class UserService {
     constructor(private prisma: PrismaService) { }
 
-    async findOrCreate(dto: CreateUserDto) {
-        const existing = await this.prisma.user.findUnique({
-            where: { telegramId: dto.telegramId },
-        });
-        if (existing) return existing;
-
-        return this.prisma.user.create({
-            data: {
-                telegramId: dto.telegramId,
-                username: dto.username,
-                firstName: dto.firstName,
-                subscription: {
-                    create: { plan: 'FREE' },
-                },
+    // ─── Google orqali kirish — asosiy metod ───────────────────────────────
+    async findOrCreateByGoogle(dto: {
+        googleId: string;
+        email: string;
+        firstName: string;
+        username: string;
+    }) {
+        // Email yoki googleId bo'yicha izlaymiz
+        let user = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { googleId: dto.googleId },
+                    { email: dto.email },
+                ],
             },
             include: { subscription: true },
         });
+
+        if (!user) {
+            // Yangi user — onboarded: false (onboarding ko'rsatiladi)
+            user = await this.prisma.user.create({
+                data: {
+                    googleId: dto.googleId,
+                    email: dto.email,
+                    firstName: dto.firstName,
+                    username: dto.username,
+                    onboarded: false,
+                    subscription: { create: { plan: 'FREE' } },
+                },
+                include: { subscription: true },
+            });
+        } else if (!user.googleId) {
+            // Mavjud user ga googleId qo'shamiz (birinchi marta Google bilan kirsa)
+            user = await this.prisma.user.update({
+                where: { id: user.id },
+                data: { googleId: dto.googleId },
+                include: { subscription: true },
+            });
+        }
+
+        return user;
     }
 
+    // ─── Asosiy CRUD ───────────────────────────────────────────────────────
     async findOne(id: number) {
         const user = await this.prisma.user.findUnique({
             where: { id },
@@ -38,9 +63,9 @@ export class UserService {
         return user;
     }
 
-    async findByTelegramId(telegramId: string) {
+    async findByEmail(email: string) {
         const user = await this.prisma.user.findUnique({
-            where: { telegramId },
+            where: { email },
             include: { subscription: true },
         });
         if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
@@ -52,6 +77,7 @@ export class UserService {
         return this.prisma.user.update({ where: { id }, data: dto });
     }
 
+    // ─── Statistika ────────────────────────────────────────────────────────
     async getStats(userId: number) {
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -80,7 +106,7 @@ export class UserService {
         };
         const limits = planLimits[plan] ?? planLimits['FREE'];
 
-        // Streak
+        // Streak hisoblash
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let streak = 0;
@@ -97,7 +123,7 @@ export class UserService {
             else if (i > 0) break;
         }
 
-        // Haftalik
+        // Haftalik faollik
         const weekly = Array(7).fill(0);
         sessions.forEach((s: any) => {
             const d = new Date(s.studiedAt);
@@ -108,8 +134,23 @@ export class UserService {
             if (diffDays < 7) weekly[idx] += s.cardsStudied;
         });
 
-        return { totalDecks, totalFlashcards, totalStudied, streak, weekly, plan, limits };
+        // onboarded holati — email bor user uchun onboarding ko'rsatmaymiz
+        const onboarded = user.onboarded ?? false;
+
+        return {
+            totalDecks,
+            totalFlashcards,
+            totalStudied,
+            streak,
+            weekly,
+            plan,
+            limits,
+            onboarded,
+            email: user.email,
+        };
     }
+
+    // ─── Plan yangilash ────────────────────────────────────────────────────
     async updatePlan(userId: number, plan: PlanType) {
         return this.prisma.subscription.upsert({
             where: { userId },
@@ -118,44 +159,10 @@ export class UserService {
         });
     }
 
+    // ─── O'chirish ─────────────────────────────────────────────────────────
     async remove(id: number) {
         await this.findOne(id);
         await this.prisma.user.delete({ where: { id } });
         return { success: true, message: "Foydalanuvchi o'chirildi" };
-    }
-
-
-    async findOrCreateByGoogle(dto: {
-        googleId: string;
-        email: string;
-        firstName: string;
-        username: string;
-    }) {
-        // Email orqali mavjud userni topamiz
-        let user = await this.prisma.user.findFirst({
-            where: {
-                OR: [
-                    { googleId: dto.googleId },
-                    { email: dto.email }
-                ]
-            },
-            include: { subscription: true },
-        });
-
-        if (!user) {
-            user = await this.prisma.user.create({
-                data: {
-                    googleId: dto.googleId,
-                    email: dto.email,
-                    firstName: dto.firstName,
-                    username: dto.username,
-                    telegramId: `google_${dto.googleId}`,
-                    subscription: { create: { plan: 'FREE' } },
-                },
-                include: { subscription: true },
-            });
-        }
-
-        return user;
     }
 }

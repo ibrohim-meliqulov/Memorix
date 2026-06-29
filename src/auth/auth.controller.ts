@@ -1,52 +1,52 @@
-import { Controller, Post, Body, Get, Query, Res, Req, UseGuards } from '@nestjs/common';
+// src/auth/auth.controller.ts
+
+import { Controller, Post, Body, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { TelegramAuthDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
-    @Post('telegram')
-    loginWithTelegram(@Body() dto: TelegramAuthDto) {
-        return this.authService.loginWithTelegram(dto.initData);
-    }
-
-    @Post('dev-login')
-    loginDevMode(@Body('telegramId') telegramId: string) {
-        return this.authService.loginDevMode(telegramId);
-    }
-
-    @Get('web')
-    async webLogin(@Query() query: Record<string, string>, @Res() res: any) {
-        try {
-            const result = await this.authService.verifyTelegramWebLogin(query);
-            res.send(`<html><body><script>
-                window.opener?.postMessage({token:'${result.accessToken}'},'*');
-                window.close();
-            </script></body></html>`);
-        } catch (err) {
-            res.send(`<html><body><script>
-                window.opener?.postMessage({error:'auth_failed'},'*');
-                window.close();
-            </script></body></html>`);
-        }
-    }
-
-    // Google login boshlash
+    // ─── Google login boshlash ─────────────────────────────────────────────
+    // Foydalanuvchi bu URLga o'tsa → Google sahifasiga yo'naltiriladi
     @Get('google')
     @UseGuards(AuthGuard('google'))
-    googleLogin() { }
+    googleLogin() {
+        // Passport o'zi yo'naltiradi
+    }
 
-    // Google callback
+    // ─── Google callback ───────────────────────────────────────────────────
     @Get('google/callback')
     @UseGuards(AuthGuard('google'))
     async googleCallback(@Req() req: any, @Res() res: any) {
-        const user = req.user;
-        const token = this.authService.generateTokenPublic(
-            user.id,
-            user.telegramId ?? `google_${user.googleId}`,
-        );
-        res.redirect(`https://memorix-front.vercel.app/auth?token=${token}`);
+        const googleUser = req.user;
+
+        const { accessToken, user } = await this.authService.loginWithGoogle({
+            googleId: googleUser.googleId ?? googleUser.id,
+            email: googleUser.email,
+            firstName: googleUser.firstName ?? googleUser.first_name ?? '',
+            username: googleUser.username ?? googleUser.displayName ?? '',
+        });
+
+        const frontendUrl = process.env.FRONTEND_URL ?? 'https://memorix-front.vercel.app';
+
+        // Token bilan frontend ga qaytamiz
+        // onboarded: false bo'lsa frontend onboarding ko'rsatadi
+        res.redirect(`${frontendUrl}/auth?token=${accessToken}&onboarded=${user.onboarded ?? false}`);
+    }
+
+    // ─── Bot uchun login URL ───────────────────────────────────────────────
+    // Telegram bot: GET /auth/bot-login-url → URL qaytaradi
+    // Bot bu URLni "Google orqali kirish" tugmasi sifatida yuboradi
+    @Get('bot-login-url')
+    getBotLoginUrl() {
+        return { url: this.authService.getBotLoginUrl() };
+    }
+
+    // ─── Dev rejimi (faqat development) ───────────────────────────────────
+    @Post('dev-login')
+    loginDevMode(@Body('email') email: string) {
+        return this.authService.loginDevMode(email);
     }
 }

@@ -6,8 +6,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 
 export interface JwtPayload {
-    sub: number; // userId
-    telegramId: string;
+    sub: number;   // userId
+    email: string; // asosiy identifikator
 }
 
 @Injectable()
@@ -21,7 +21,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     async validate(payload: JwtPayload) {
-        // Bu yerdan qaytgan narsa req.user ga joylashadi
-        return { userId: payload.sub, telegramId: payload.telegramId };
+        return { userId: payload.sub, email: payload.email };
     }
 }
