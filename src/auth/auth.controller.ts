@@ -47,6 +47,6 @@ export class AuthController {
             user.id,
             user.telegramId ?? `google_${user.googleId}`,
         );
-        res.redirect(`https://memorix-front.vercel.app/auth?token=${token}`);
+        res.redirect(`https://memorix-landing-sand.vercel.app/auth?token=${token}`);
     }
 }
