@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { createClient } from '@supabase/supabase-js';
 import { PaymentStatus, Plan } from '@prisma/client';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class PaymentService {
@@ -16,7 +17,10 @@ export class PaymentService {
         process.env.SUPABASE_SERVICE_KEY!, // service_role key — server side
     );
 
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaService,
+        private notificationService: NotificationService
+
+    ) { }
 
     // ─── USER: Chek yuklash ───────────────────────────────────────────────────
 
@@ -152,6 +156,16 @@ export class PaymentService {
             }),
         ]);
 
+
+
+        // ── YANGI: notification yaratish ──
+        await this.notificationService.create({
+            userId: request.userId,
+            title: "To'lov tasdiqlandi! 🎉",
+            message: `Tabriklaymiz! Sizga ${finalPlan} rejasi faollashtirildi.`,
+            type: 'PAYMENT',
+        });
+
         return {
             message: `So'rov tasdiqlandi. User ga ${finalPlan} plan berildi.`,
             request: updated,
@@ -173,6 +187,16 @@ export class PaymentService {
         const updated = await this.prisma.paymentRequest.update({
             where: { id: requestId },
             data: { status: PaymentStatus.REJECTED },
+        });
+
+        // ── YANGI: notification yaratish ──
+        await this.notificationService.create({
+            userId: request.userId,
+            title: "To'lov rad etildi",
+            message: reason
+                ? `Chekingiz rad etildi: ${reason}`
+                : "Chekingiz rad etildi. Iltimos qaytadan urinib ko'ring yoki admin bilan bog'laning.",
+            type: 'WARNING',
         });
 
         return {

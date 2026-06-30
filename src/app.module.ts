@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { BotModule } from './bot/bot.module';
 import { AppController } from './app.controller';
 import { PaymentModule } from './payment/payment.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { PaymentModule } from './payment/payment.module';
     UserModule,
     AuthModule,
     BotModule,
-    PaymentModule
+    PaymentModule,
+    NotificationModule
   ],
   controllers: [AppController]
 })
