@@ -14,6 +14,7 @@ import { SubscriptionHelper } from '../subscription/subscription.helper';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { CurrentUserData } from '../auth/current-user.decorator';
+import { compressImageForAi } from './image-compress.helper';
 import { IsString, IsNotEmpty, IsOptional, IsInt, Min, Max } from 'class-validator';
 
 // ─── DTO ───────────────────────────────────────
@@ -78,10 +79,13 @@ export class AiController {
     ) {
         await this.subscriptionHelper.checkAndIncrementAiUsage(user.userId);
 
-        const base64 = file.buffer.toString('base64');
+        // Rasmni AI'ga yuborishdan oldin siqamiz — token/xarajatni kamaytiradi
+        const { buffer, mimeType } = await compressImageForAi(file.buffer);
+        const base64 = buffer.toString('base64');
+
         const flashcards = await this.aiService.generateFlashcardsFromImage(
             base64,
-            file.mimetype,
+            mimeType,
             15,
             language,
         );
