@@ -34,22 +34,6 @@ export class PaymentService {
         // 2. Supabase Storage ga yuklash
         const fileName = `checks/${userId}_${Date.now()}_${file.originalname}`;
 
-        console.log('--- SUPABASE UPLOAD DEBUG ---');
-        console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
-        console.log('SERVICE_KEY length:', process.env.SUPABASE_SERVICE_KEY?.length);
-        console.log('fileName:', fileName);
-        console.log('file size:', file?.buffer?.length);
-
-        // ── XOM FETCH TESTI: server umuman tashqi internetga chiqa olyaptimi? ──
-        try {
-            const testRes = await fetch(process.env.SUPABASE_URL!);
-            console.log('RAW FETCH TEST status:', testRes.status);
-        } catch (rawErr: any) {
-            console.log('RAW FETCH TEST FAILED:', rawErr?.message);
-            console.log('RAW FETCH TEST cause:', JSON.stringify(rawErr?.cause));
-            console.log('RAW FETCH TEST full:', rawErr);
-        }
-
         const { error } = await this.supabase.storage
             .from('payment-checks') // bucket nomi
             .upload(fileName, file.buffer, {
@@ -58,10 +42,6 @@ export class PaymentService {
             });
 
         if (error) {
-            console.log('--- SUPABASE UPLOAD ERROR (full) ---');
-            console.log(JSON.stringify(error, null, 2));
-            console.log('error.name:', (error as any)?.name);
-            console.log('error.cause:', JSON.stringify((error as any)?.cause));
             throw new BadRequestException(`Fayl yuklanmadi: ${error.message}`);
         }
 
@@ -133,8 +113,11 @@ export class PaymentService {
     }
 
     // ─── ADMIN: So'rovni tasdiqlash ───────────────────────────────────────────
+    // overridePlan berilsa, user so'ragan plan o'rniga shu plan beriladi
+    // (masalan user "Starter" tugmasini bosgan, lekin chekda "Premium" puli
+    // ko'rinsa, admin shu yerda to'g'rilab tasdiqlay oladi)
 
-    async approveRequest(requestId: number) {
+    async approveRequest(requestId: number, overridePlan?: Plan) {
         const request = await this.prisma.paymentRequest.findUnique({
             where: { id: requestId },
         });
@@ -144,31 +127,33 @@ export class PaymentService {
             throw new BadRequestException('Bu so\'rov allaqachon ko\'rib chiqilgan');
         }
 
+        const finalPlan = overridePlan ?? request.plan;
+
         // Tranzaksiya: status + subscription bir vaqtda yangilansin
         const [updated] = await this.prisma.$transaction([
-            // 1. PaymentRequest → APPROVED
+            // 1. PaymentRequest → APPROVED (agar plan o'zgartirilgan bo'lsa, shuni ham yozamiz)
             this.prisma.paymentRequest.update({
                 where: { id: requestId },
-                data: { status: PaymentStatus.APPROVED },
+                data: { status: PaymentStatus.APPROVED, plan: finalPlan },
             }),
 
             // 2. Subscription yangilash yoki yaratish
             this.prisma.subscription.upsert({
                 where: { userId: request.userId },
                 update: {
-                    plan: request.plan,
-                    expiresAt: getExpiryDate(request.plan),
+                    plan: finalPlan,
+                    expiresAt: getExpiryDate(finalPlan),
                 },
                 create: {
                     userId: request.userId,
-                    plan: request.plan,
-                    expiresAt: getExpiryDate(request.plan),
+                    plan: finalPlan,
+                    expiresAt: getExpiryDate(finalPlan),
                 },
             }),
         ]);
 
         return {
-            message: `So'rov tasdiqlandi. User ga ${request.plan} plan berildi.`,
+            message: `So'rov tasdiqlandi. User ga ${finalPlan} plan berildi.`,
             request: updated,
         };
     }

@@ -73,12 +73,18 @@ export class PaymentController {
 
     /**
      * PATCH /payment/admin/approve/:id
-     * Admin so'rovni tasdiqlaydi → user ga plan beriladi
+     * Body (ixtiyoriy): { plan: "STARTER" | "PRO" | "B2B" }
+     * Admin so'rovni tasdiqlaydi → user ga plan beriladi.
+     * Agar body'da plan kelsa, asl so'ralgan plan o'rniga shu beriladi
+     * (masalan user Starter so'ragan, lekin chekda Premium puli ko'rinsa).
      */
     @UseGuards(AdminGuard)
     @Patch('admin/approve/:id')
-    approveRequest(@Param('id', ParseIntPipe) id: number) {
-        return this.paymentService.approveRequest(id);
+    approveRequest(
+        @Param('id', ParseIntPipe) id: number,
+        @Body('plan') plan?: Plan,
+    ) {
+        return this.paymentService.approveRequest(id, plan);
     }
 
     /**
