@@ -10,6 +10,7 @@ import { BotModule } from './bot/bot.module';
 import { AppController } from './app.controller';
 import { PaymentModule } from './payment/payment.module';
 import { NotificationModule } from './notification/notification.module';
+import { PronunciationModule } from './pronunciation/pronunciation.module';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { NotificationModule } from './notification/notification.module';
     AuthModule,
     BotModule,
     PaymentModule,
-    NotificationModule
+    NotificationModule,
+    PronunciationModule
   ],
   controllers: [AppController]
 })

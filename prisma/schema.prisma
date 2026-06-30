@@ -96,6 +96,16 @@ model Notification {
   @@index([userId, read])
 }
 
+model PronunciationCache {
+  id        Int      @id @default(autoincrement())
+  text      String
+  langCode  String
+  audioUrl  String
+  createdAt DateTime @default(now())
+
+  @@unique([text, langCode])
+}
+
 enum NotificationType {
   INFO
   SUCCESS
