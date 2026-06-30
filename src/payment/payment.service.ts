@@ -40,6 +40,16 @@ export class PaymentService {
         console.log('fileName:', fileName);
         console.log('file size:', file?.buffer?.length);
 
+        // ── XOM FETCH TESTI: server umuman tashqi internetga chiqa olyaptimi? ──
+        try {
+            const testRes = await fetch(process.env.SUPABASE_URL!);
+            console.log('RAW FETCH TEST status:', testRes.status);
+        } catch (rawErr: any) {
+            console.log('RAW FETCH TEST FAILED:', rawErr?.message);
+            console.log('RAW FETCH TEST cause:', JSON.stringify(rawErr?.cause));
+            console.log('RAW FETCH TEST full:', rawErr);
+        }
+
         const { error } = await this.supabase.storage
             .from('payment-checks') // bucket nomi
             .upload(fileName, file.buffer, {
