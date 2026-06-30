@@ -10,6 +10,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { UserModule } from '../user/user.module';
 import { AdminAuthController } from './admin-auth.controller';
+import { AdminStatsController } from 'src/admin/admin-stats.controller';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { AdminAuthController } from './admin-auth.controller';
       }),
     }),
   ],
-  controllers: [AuthController, AdminAuthController],
+  controllers: [AuthController, AdminAuthController, AdminStatsController],
   providers: [AuthService, JwtStrategy, GoogleStrategy],
   exports: [AuthService],
 })
