@@ -33,6 +33,13 @@ export class PaymentService {
 
         // 2. Supabase Storage ga yuklash
         const fileName = `checks/${userId}_${Date.now()}_${file.originalname}`;
+
+        console.log('--- SUPABASE UPLOAD DEBUG ---');
+        console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+        console.log('SERVICE_KEY length:', process.env.SUPABASE_SERVICE_KEY?.length);
+        console.log('fileName:', fileName);
+        console.log('file size:', file?.buffer?.length);
+
         const { error } = await this.supabase.storage
             .from('payment-checks') // bucket nomi
             .upload(fileName, file.buffer, {
@@ -41,6 +48,10 @@ export class PaymentService {
             });
 
         if (error) {
+            console.log('--- SUPABASE UPLOAD ERROR (full) ---');
+            console.log(JSON.stringify(error, null, 2));
+            console.log('error.name:', (error as any)?.name);
+            console.log('error.cause:', JSON.stringify((error as any)?.cause));
             throw new BadRequestException(`Fayl yuklanmadi: ${error.message}`);
         }
 
