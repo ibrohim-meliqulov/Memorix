@@ -3,10 +3,14 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDeckDto, UpdateDeckDto } from './dto/deck.dto';
+import { SubscriptionHelper } from '../subscription/subscription.helper';
 
 @Injectable()
 export class DeckService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private subscriptionHelper: SubscriptionHelper,
+    ) { }
 
     async create(dto: CreateDeckDto) {
         await this.checkPlanLimit(dto.userId);
@@ -60,11 +64,9 @@ export class DeckService {
     // ─── PRIVATE ───
 
     private async checkPlanLimit(userId: number) {
-        const sub = await this.prisma.subscription.findUnique({
-            where: { userId },
-        });
-
-        const plan = sub?.plan ?? 'FREE';
+        // getActiveSubscription muddati tugagan bo'lsa avtomatik FREE'ga qaytaradi
+        const sub = await this.subscriptionHelper.getActiveSubscription(userId);
+        const plan = sub.plan;
 
         const deckLimits: Record<string, number> = {
             FREE: 3,

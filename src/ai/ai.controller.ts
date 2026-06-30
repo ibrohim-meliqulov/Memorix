@@ -6,10 +6,14 @@ import {
     Body,
     UseInterceptors,
     UploadedFile,
-    BadRequestException,
+    UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AiService } from './ai.service';
+import { SubscriptionHelper } from '../subscription/subscription.helper';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { CurrentUserData } from '../auth/current-user.decorator';
 import { IsString, IsNotEmpty, IsOptional, IsInt, Min, Max } from 'class-validator';
 
 // ─── DTO ───────────────────────────────────────
@@ -32,20 +36,31 @@ class TranslateWordDto {
 }
 
 // ─── CONTROLLER ────────────────────────────────
+// Diqqat: barcha AI endpointlar endi JwtAuthGuard talab qiladi —
+// chunki kunlik limit aynan shu userga bog'lab hisoblanadi.
 @Controller('ai')
+@UseGuards(JwtAuthGuard)
 export class AiController {
-    constructor(private readonly aiService: AiService) { }
+    constructor(
+        private readonly aiService: AiService,
+        private readonly subscriptionHelper: SubscriptionHelper,
+    ) { }
 
     /**
      * POST /ai/generate-from-text
      * Body: { "text": "...", "maxWords": 15 }
      */
     @Post('generate-from-text')
-    async generateFromText(@Body() body: { text: string; maxWords?: number; language?: string }) {
+    async generateFromText(
+        @CurrentUser() user: CurrentUserData,
+        @Body() body: { text: string; maxWords?: number; language?: string },
+    ) {
+        await this.subscriptionHelper.checkAndIncrementAiUsage(user.userId);
+
         const flashcards = await this.aiService.generateFlashcardsFromText(
             body.text,
             body.maxWords ?? 15,
-            body.language ?? 'english',  // ← QO'SHILDI
+            body.language ?? 'english',
         );
         return { flashcards };
     }
@@ -57,15 +72,18 @@ export class AiController {
     @Post('generate-from-image')
     @UseInterceptors(FileInterceptor('image'))
     async generateFromImage(
+        @CurrentUser() user: CurrentUserData,
         @UploadedFile() file: Express.Multer.File,
-        @Body('language') language = 'english',  // ← QO'SHILDI
+        @Body('language') language = 'english',
     ) {
+        await this.subscriptionHelper.checkAndIncrementAiUsage(user.userId);
+
         const base64 = file.buffer.toString('base64');
         const flashcards = await this.aiService.generateFlashcardsFromImage(
             base64,
             file.mimetype,
             15,
-            language,  // ← QO'SHILDI
+            language,
         );
         return { flashcards };
     }
@@ -75,7 +93,12 @@ export class AiController {
      * Body: { "word": "apple" }
      */
     @Post('translate-word')
-    async translateWord(@Body() dto: TranslateWordDto) {
+    async translateWord(
+        @CurrentUser() user: CurrentUserData,
+        @Body() dto: TranslateWordDto,
+    ) {
+        await this.subscriptionHelper.checkAndIncrementAiUsage(user.userId);
+
         const flashcard = await this.aiService.translateSingleWord(dto.word);
         return {
             success: true,

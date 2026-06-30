@@ -50,9 +50,11 @@ model Flashcard {
 }
 
 model Subscription {
-  id        Int       @id @default(autoincrement())
-  plan      Plan      @default(FREE)
-  expiresAt DateTime?
+  id             Int       @id @default(autoincrement())
+  plan           Plan      @default(FREE)
+  expiresAt      DateTime?
+  aiCallsToday   Int       @default(0)
+  aiCallsResetAt DateTime?
 
   userId Int  @unique
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)

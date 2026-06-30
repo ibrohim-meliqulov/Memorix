@@ -7,10 +7,14 @@ import {
     UpdateFlashcardDto,
     BulkCreateFlashcardDto,
 } from './dto/flashcard.dto';
+import { SubscriptionHelper } from '../subscription/subscription.helper';
 
 @Injectable()
 export class FlashcardService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private subscriptionHelper: SubscriptionHelper,
+    ) { }
 
     async create(dto: CreateFlashcardDto) {
         await this.checkDeckExists(dto.deckId);
@@ -88,8 +92,9 @@ export class FlashcardService {
     }
 
     private async checkFlashcardLimit(userId: number) {
-        const sub = await this.prisma.subscription.findUnique({ where: { userId } });
-        const plan = sub?.plan ?? 'FREE';
+        // getActiveSubscription muddati tugagan bo'lsa avtomatik FREE'ga qaytaradi
+        const sub = await this.subscriptionHelper.getActiveSubscription(userId);
+        const plan = sub.plan;
 
         const cardLimits: Record<string, number> = {
             FREE: 30,

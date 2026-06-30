@@ -3,12 +3,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/user.dto';
+import { SubscriptionHelper } from '../subscription/subscription.helper';
 
 type PlanType = 'FREE' | 'STARTER' | 'PRO' | 'B2B';
 
 @Injectable()
 export class UserService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private subscriptionHelper: SubscriptionHelper,
+    ) { }
 
     // ─── Google orqali kirish — asosiy metod ───────────────────────────────
     async findOrCreateByGoogle(dto: {
@@ -79,6 +83,9 @@ export class UserService {
 
     // ─── Statistika ────────────────────────────────────────────────────────
     async getStats(userId: number) {
+        // Avval muddati tugagan subscription'ni FREE'ga qaytaramiz (agar kerak bo'lsa)
+        await this.subscriptionHelper.getActiveSubscription(userId);
+
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
             include: {
