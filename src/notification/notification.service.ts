@@ -2,7 +2,7 @@
 
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateNotificationDto } from './dto/notification.dto';
+import { CreateNotificationDto } from './dto/dto.notification';
 
 @Injectable()
 export class NotificationService {
