@@ -108,8 +108,10 @@ export class UserService {
         const planLimits: Record<string, { decks: number; cards: number }> = {
             FREE: { decks: 3, cards: 30 },
             STARTER: { decks: 10, cards: 100 },
-            PRO: { decks: Infinity, cards: Infinity },
-            B2B: { decks: Infinity, cards: Infinity },
+            // Infinity JSON orqali yuborilganda null bo'lib qoladi —
+            // shuning uchun "cheksiz" uchun juda katta son ishlatamiz
+            PRO: { decks: 999999, cards: 999999 },
+            B2B: { decks: 999999, cards: 999999 },
         };
         const limits = planLimits[plan] ?? planLimits['FREE'];
 
