@@ -1,5 +1,5 @@
 // src/pronunciation/pronunciation.service.ts
-
+import * as crypto from 'crypto'; // faylning eng tepasiga qo'shing
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -69,13 +69,17 @@ export class PronunciationService {
         const buffer = Buffer.from(audioContent, 'base64');
 
         // 3. Supabase Storage'ga yuklaymiz
-        const fileName = `pronunciation/${langCode}_${normalizedText.replace(/[^a-z0-9а-яёa-яa-zа-я]/gi, '_')}_${Date.now()}.mp3`;
+        const hash = crypto
+            .createHash('md5')
+            .update(`${langCode}_${normalizedText}`)
+            .digest('hex');
+        const fileName = `pronunciation/${hash}.mp3`;
 
         const { error } = await this.supabase.storage
             .from('pronunciation-audio') // bucket nomi — avval yaratish kerak
             .upload(fileName, buffer, {
                 contentType: 'audio/mpeg',
-                upsert: false,
+                upsert: true,
             });
 
         if (error) {
