@@ -16,9 +16,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../auth/admin.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { PaymentStatus, Plan } from '@prisma/client';
 import type { CurrentUserData } from '../auth/current-user.decorator';
+import { PaymentStatus, Plan } from '@prisma/client';
 import { Multer } from 'multer';
 
 @Controller('payment')
@@ -58,12 +59,13 @@ export class PaymentController {
     }
 
     // ─── ADMIN ENDPOINTS ──────────────────────────────────────────────────────
-    // TODO: Ishlab chiqishda AdminGuard qo'shing
+    // Faqat ADMIN_EMAIL ga teng userlar kira oladi (AdminGuard)
 
     /**
      * GET /payment/admin/requests?status=PENDING
      * Admin barcha so'rovlarni ko'radi (filter: PENDING | APPROVED | REJECTED)
      */
+    @UseGuards(AdminGuard)
     @Get('admin/requests')
     getAllRequests(@Query('status') status?: PaymentStatus) {
         return this.paymentService.getAllRequests(status);
@@ -73,6 +75,7 @@ export class PaymentController {
      * PATCH /payment/admin/approve/:id
      * Admin so'rovni tasdiqlaydi → user ga plan beriladi
      */
+    @UseGuards(AdminGuard)
     @Patch('admin/approve/:id')
     approveRequest(@Param('id', ParseIntPipe) id: number) {
         return this.paymentService.approveRequest(id);
@@ -82,6 +85,7 @@ export class PaymentController {
      * PATCH /payment/admin/reject/:id
      * Admin so'rovni rad etadi
      */
+    @UseGuards(AdminGuard)
     @Patch('admin/reject/:id')
     rejectRequest(
         @Param('id', ParseIntPipe) id: number,
