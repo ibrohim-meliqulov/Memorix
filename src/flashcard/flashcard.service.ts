@@ -8,12 +8,14 @@ import {
     BulkCreateFlashcardDto,
 } from './dto/flashcard.dto';
 import { SubscriptionHelper } from '../subscription/subscription.helper';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class FlashcardService {
     constructor(
         private prisma: PrismaService,
         private subscriptionHelper: SubscriptionHelper,
+        private userService: UserService
     ) { }
 
     async create(dto: CreateFlashcardDto) {
@@ -75,9 +77,15 @@ export class FlashcardService {
     }
 
     async saveSession(userId: number, cardsStudied: number) {
-        return this.prisma.studySession.create({
+        const session = await this.prisma.studySession.create({
             data: { userId, cardsStudied },
         });
+
+        // Har bir kartochka uchun 10 XP
+        const xpEarned = cardsStudied * 10;
+        await this.userService.addXp(userId, xpEarned);
+
+        return { ...session, xpEarned };
     }
 
     // ─── PRIVATE ───

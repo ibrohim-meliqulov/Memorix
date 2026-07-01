@@ -9,15 +9,18 @@ datasource db {
 }
 
 model User {
-  id         Int      @id @default(autoincrement())
-  telegramId String?  @unique
-  googleId   String?  @unique // ← qo'shing
-  email      String?  @unique // ← qo'shing
-  username   String?
-  firstName  String?
-  onboarded  Boolean  @default(false) // ← QO'SHING
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  telegramId    String?  @unique
+  googleId      String?  @unique // ← qo'shing
+  email         String?  @unique // ← qo'shing
+  username      String?
+  firstName     String?
+  onboarded     Boolean  @default(false) // ← QO'SHING
+  totalXp       Int      @default(0) // ← QO'SHING
+  streakFreezes Int      @default(0) // ← QO'SHING (PRO foydalanuvchilarga beriladi)
+  weeklyGoal    Int      @default(5) // ← QO'SHING (haftada nechta kun maqsad)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   decks           Deck[]
   subscription    Subscription?

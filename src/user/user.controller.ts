@@ -49,6 +49,19 @@ export class UserController {
     return this.userService.remove(user.userId);
   }
 
+
+  // PATCH /users/me/weekly-goal
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/weekly-goal')
+  updateWeeklyGoal(
+    @CurrentUser() user: CurrentUserData,
+    @Body('weeklyGoal') weeklyGoal: number,
+  ) {
+    return this.userService.updateWeeklyGoal(user.userId, weeklyGoal);
+  }
+
+
+
   // Plan yangilash (admin)
   @Patch(':id/plan')
   async updatePlan(

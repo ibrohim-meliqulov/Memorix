@@ -146,6 +146,27 @@ export class UserService {
         // onboarded holati — email bor user uchun onboarding ko'rsatmaymiz
         const onboarded = user.onboarded ?? false;
 
+        // ─── XP va Level ────────────────────────────────────────────────────
+        const totalXp = user.totalXp;
+
+        // Level formulasi: har bir keyingi level uchun ko'proq XP kerak bo'ladi
+        // Level 1: 0-99 XP, Level 2: 100-249 XP, Level 3: 250-449 XP va h.k.
+        const calculateLevel = (xp: number) => {
+            let level = 1;
+            let required = 100;
+            let accumulated = 0;
+            while (xp >= accumulated + required) {
+                accumulated += required;
+                level++;
+                required = Math.round(required * 1.35); // har level qiyinlashadi
+            }
+            const xpIntoLevel = xp - accumulated;
+            const xpForNextLevel = required;
+            return { level, xpIntoLevel, xpForNextLevel };
+        };
+
+        const { level, xpIntoLevel, xpForNextLevel } = calculateLevel(totalXp);
+
         return {
             totalDecks,
             totalFlashcards,
@@ -156,6 +177,13 @@ export class UserService {
             limits,
             onboarded,
             email: user.email,
+            // ─── YANGI ───
+            totalXp,
+            level,
+            xpIntoLevel,
+            xpForNextLevel,
+            streakFreezes: user.streakFreezes,
+            weeklyGoal: user.weeklyGoal,
         };
     }
 
@@ -173,5 +201,24 @@ export class UserService {
         await this.findOne(id);
         await this.prisma.user.delete({ where: { id } });
         return { success: true, message: "Foydalanuvchi o'chirildi" };
+    }
+
+    // ─── XP qo'shish (kartochka o'rganilganda chaqiriladi) ─────────────────
+    async addXp(userId: number, amount: number) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { totalXp: { increment: amount } },
+        });
+    }
+
+    // ─── Haftalik maqsadni o'zgartirish ─────────────────────────────────────
+    async updateWeeklyGoal(userId: number, weeklyGoal: number) {
+        if (weeklyGoal < 1 || weeklyGoal > 7) {
+            throw new Error("Haftalik maqsad 1 dan 7 gacha bo'lishi kerak");
+        }
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { weeklyGoal },
+        });
     }
 }
