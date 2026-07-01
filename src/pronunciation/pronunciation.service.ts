@@ -9,6 +9,7 @@ const VOICE_MAP: Record<string, { languageCode: string; name: string }> = {
     english: { languageCode: 'en-US', name: 'en-US-Wavenet-D' },
     russian: { languageCode: 'ru-RU', name: 'ru-RU-Wavenet-D' },
     korean: { languageCode: 'ko-KR', name: 'ko-KR-Wavenet-A' },
+    german: { languageCode: 'de-DE', name: 'de-DE-Wavenet-A' },
 };
 
 @Injectable()

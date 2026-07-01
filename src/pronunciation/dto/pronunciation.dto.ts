@@ -6,6 +6,6 @@ export class GetPronunciationDto {
     text: string;
 
     @IsString()
-    @IsIn(['english', 'russian', 'korean'])
-    lang: 'english' | 'russian' | 'korean';
+    @IsIn(['english', 'russian', 'korean', 'german'])
+    lang: 'english' | 'russian' | 'korean' | 'german';
 }

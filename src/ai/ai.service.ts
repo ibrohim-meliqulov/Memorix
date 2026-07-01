@@ -32,6 +32,7 @@ export class AiService {
         english: { from: 'inglizcha', to: "o'zbekcha", example: 'inglizcha' },
         russian: { from: 'ruscha', to: "o'zbekcha", example: 'ruscha' },
         korean: { from: 'koreycha', to: "o'zbekcha", example: 'koreycha' },
+        german: { from: 'nemischa', to: "o'zbekcha", example: 'nemischa' },
     };
 
     async generateFlashcardsFromText(
